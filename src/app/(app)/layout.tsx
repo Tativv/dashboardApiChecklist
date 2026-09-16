@@ -1,22 +1,6 @@
-'use client';
-import { ReactNode, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { DashboardShell } from '@/components/dashboard-shell';
-import { isSessionValid } from '@/features/auth/store';
+import { ReactNode } from 'react';
+import { AuthGate } from '@/components/auth-gate';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (!isSessionValid()) {
-      router.replace('/login');
-      return;
-    }
-    setReady(true);
-  }, [router]);
-
-  if (!ready) return null;
-
-  return <DashboardShell>{children}</DashboardShell>;
+  return <AuthGate>{children}</AuthGate>;
 }
