@@ -1,6 +1,91 @@
 'use client';
-import { ReactNode, useState } from 'react';
-import { Role } from '@/features/checklists/mock-data';
-const nav=[['dashboard','▦','Resumen'],['instances','☑','Checklists'],['templates','▤','Templates'],['areas','⌖','Áreas'],['assets','▧','Activos'],['reports','◷','Reportes'],['users','◉','Usuarios'],['settings','⚙','Configuración']];
-const access:Record<string,Role[]>={users:['Admin'],settings:['Admin'],templates:['Admin','Supervisor'],areas:['Admin','Supervisor'],assets:['Admin','Supervisor'],reports:['Admin','Supervisor','Manager'],dashboard:['Admin','Supervisor','Operator','Manager'],instances:['Admin','Supervisor','Operator','Manager']};
-export function DashboardShell({ children, page, onPage }:{children:ReactNode;page:string;onPage:(p:string)=>void}) { const [role,setRole]=useState<Role>('Supervisor'); return <div className="shell"><aside className="sidebar"><div className="brand"><span className="brand-mark">✓</span>HotelOps</div><div className="nav-label">OPERACIONES</div>{nav.filter(n=>access[n[0]].includes(role)).map(n=><button key={n[0]} className={'nav '+(page===n[0]?'active':'')} onClick={()=>onPage(n[0])}><span className="nav-icon">{n[1]}</span>{n[2]}</button>)}<div className="nav-label">VISTA ACTUAL</div><select aria-label="Rol actual" value={role} onChange={e=>setRole(e.target.value as Role)} style={{width:'100%',background:'#202c44',color:'#d7ddeb',border:0,borderRadius:7,padding:10}}>{(['Admin','Supervisor','Operator','Manager'] as Role[]).map(r=><option key={r}>{r}</option>)}</select></aside><main className="main"><header className="topbar"><div className="crumb">Hotel Aurora / <strong>{nav.find(n=>n[0]===page)?.[2]}</strong></div><div className="top-actions"><input className="search" placeholder="Buscar…"/><span className="muted" style={{fontSize:13}}>15 sep, 2026</span><span className="avatar">LM</span></div></header>{children}</main></div> }
+import { ReactNode } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuthStore } from '@/features/auth/store';
+import { UserRole } from '@/types/api';
+import { roleLabel } from '@/components/ui/status-badge';
+
+const nav: [string, string, string][] = [
+  ['/dashboard', '▦', 'Resumen'],
+  ['/checklists', '☑', 'Checklists'],
+  ['/templates', '▤', 'Templates'],
+  ['/areas', '⌖', 'Áreas'],
+  ['/assets', '▧', 'Activos'],
+  ['/reports', '◷', 'Reportes'],
+  ['/users', '◉', 'Usuarios'],
+  ['/settings', '⚙', 'Configuración']
+];
+
+const access: Record<string, UserRole[]> = {
+  '/users': ['Admin'],
+  '/settings': ['Admin', 'Supervisor', 'Operator', 'Manager'],
+  '/templates': ['Admin', 'Supervisor', 'Manager'],
+  '/areas': ['Admin', 'Supervisor', 'Manager'],
+  '/assets': ['Admin', 'Supervisor', 'Manager'],
+  '/reports': ['Admin', 'Supervisor', 'Manager'],
+  '/dashboard': ['Admin', 'Supervisor', 'Operator', 'Manager'],
+  '/checklists': ['Admin', 'Supervisor', 'Operator', 'Manager']
+};
+
+function initials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join('');
+}
+
+export function DashboardShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const role = user?.role ?? 'Operator';
+  const activeSection = '/' + (pathname.split('/')[1] ?? '');
+
+  return (
+    <div className="shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="brand-mark">✓</span>HotelOps
+        </div>
+        <div className="nav-label">OPERACIONES</div>
+        {nav
+          .filter((n) => access[n[0]].includes(role))
+          .map((n) => (
+            <Link key={n[0]} href={n[0]} className={'nav ' + (activeSection === n[0] ? 'active' : '')}>
+              <span className="nav-icon">{n[1]}</span>
+              {n[2]}
+            </Link>
+          ))}
+        <div className="nav-label">SESIÓN</div>
+        <button
+          className="nav"
+          onClick={() => {
+            logout();
+            router.push('/login');
+          }}
+        >
+          <span className="nav-icon">⎋</span>
+          Cerrar sesión
+        </button>
+      </aside>
+      <main className="main">
+        <header className="topbar">
+          <div className="crumb">
+            Hotel Aurora / <strong>{nav.find((n) => n[0] === activeSection)?.[2] ?? ''}</strong>
+          </div>
+          <div className="top-actions">
+            <span className="muted" style={{ fontSize: 13 }}>
+              {user ? roleLabel(user.role) : ''}
+            </span>
+            <span className="avatar">{user ? initials(user.name) : ''}</span>
+          </div>
+        </header>
+        {children}
+      </main>
+    </div>
+  );
+}
