@@ -117,14 +117,14 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
       <form onSubmit={onSubmit}>
         <div className="form-grid">
           <div className="field">
-            <label>Nombre</label>
+            <label>Nome</label>
             <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required maxLength={200} />
           </div>
           <div className="field">
-            <label>Área</label>
+            <label>Setor</label>
             <select value={form.areaId} onChange={(e) => setForm((f) => ({ ...f, areaId: e.target.value }))}>
               <option value="" disabled>
-                Selecciona un área
+                Selecione o Setor
               </option>
               {(areas.data ?? []).map((a) => (
                 <option key={a.id} value={a.id}>
@@ -156,7 +156,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
             />
           </div>
           <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <label>Descripción</label>
+            <label>Descrição</label>
             <input
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -330,11 +330,11 @@ export default function TemplatesPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Nombre</th>
-              <th>Área</th>
+              <th>Nome</th>
+              <th>Setor</th>
               <th>Recurrencia</th>
-              <th>Tareas</th>
-              <th>Duración</th>
+              <th>Tarefa</th>
+              <th>Duração</th>
               <th></th>
             </tr>
           </thead>
@@ -350,7 +350,7 @@ export default function TemplatesPage() {
                 <td>{t.estimatedDurationMinutes} min</td>
                 <td className="actions">
                   <button onClick={() => setEditing(t.id)}>Editar</button>
-                  <button onClick={() => setApplying(t)}>Aplicar a activos</button>
+                  <button onClick={() => setApplying(t)}>Configurar activos</button>
                   <button onClick={() => onDelete(t)}>Eliminar</button>
                 </td>
               </tr>
@@ -358,7 +358,7 @@ export default function TemplatesPage() {
             {templates.isLoading && (
               <tr>
                 <td colSpan={6} className="muted">
-                  Cargando…
+                  Carregando…
                 </td>
               </tr>
             )}
