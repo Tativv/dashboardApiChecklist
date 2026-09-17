@@ -1,5 +1,5 @@
 'use client';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/features/auth/store';
@@ -44,10 +44,23 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const logout = useAuthStore((s) => s.logout);
   const role = user?.role ?? 'Operator';
   const activeSection = '/' + (pathname.split('/')[1] ?? '');
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [menuOpen]);
 
   return (
     <div className="shell">
-      <aside className="sidebar">
+      <div className={'sidebar-overlay ' + (menuOpen ? 'open' : '')} onClick={() => setMenuOpen(false)} />
+      <aside className={'sidebar ' + (menuOpen ? 'open' : '')}>
         <div className="brand">
           <span className="brand-mark">✓</span>HotelOps
         </div>
@@ -74,8 +87,18 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       </aside>
       <main className="main">
         <header className="topbar">
-          <div className="crumb">
-            Hotel Aurora / <strong>{nav.find((n) => n[0] === activeSection)?.[2] ?? ''}</strong>
+          <div className="top-actions">
+            <button
+              className="menu-toggle"
+              aria-label="Abrir menú"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              ☰
+            </button>
+            <div className="crumb">
+              Hotel Aurora / <strong>{nav.find((n) => n[0] === activeSection)?.[2] ?? ''}</strong>
+            </div>
           </div>
           <div className="top-actions">
             <span className="muted" style={{ fontSize: 13 }}>
