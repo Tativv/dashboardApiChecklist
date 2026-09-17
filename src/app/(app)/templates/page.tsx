@@ -69,11 +69,11 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
           areaId: existing.data.areaId,
           recurrenceType: existing.data.recurrenceType,
           estimatedDurationMinutes: existing.data.estimatedDurationMinutes,
-          scheduledTime: existing.data.scheduledTime,
+          scheduledTime: existing.data.scheduledTime ?? '08:00',
           customRecurrenceMode: existing.data.customRecurrenceMode ?? '',
           recurrenceIntervalValue: existing.data.recurrenceIntervalValue ? String(existing.data.recurrenceIntervalValue) : '',
           recurrenceIntervalUnit: existing.data.recurrenceIntervalUnit ?? '',
-          recurrenceDaysOfWeek: existing.data.recurrenceDaysOfWeek,
+          recurrenceDaysOfWeek: existing.data.recurrenceDaysOfWeek ?? [],
           tasks: existing.data.tasks.map((t) => ({ name: t.name, description: t.description ?? '', order: t.order }))
         }
       : {
@@ -373,7 +373,7 @@ function ConfigureAssetsPanel({ templateId, onClose }: { templateId: string; onC
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (template.data) setSelected(template.data.assetIds);
+    if (template.data) setSelected(template.data.assetIds ?? []);
   }, [template.data]);
 
   const assetList = assets.data ?? [];
@@ -498,9 +498,9 @@ export default function TemplatesPage() {
                 </td>
                 <td>{areaName(t.areaId)}</td>
                 <td>{recurrenceLabel(t.recurrenceType)}</td>
-                <td>{t.scheduledTime}</td>
+                <td>{t.scheduledTime ?? '—'}</td>
                 <td>{t.taskCount} tarefas</td>
-                <td>{t.assetCount} ativos</td>
+                <td>{t.assetCount ?? 0} ativos</td>
                 <td>{t.estimatedDurationMinutes} min</td>
                 <td className="actions">
                   <button onClick={() => setEditing(t.id)}>Editar</button>
