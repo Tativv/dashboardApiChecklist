@@ -1,24 +1,45 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   useTemplates,
   useTemplate,
   useCreateTemplate,
   useUpdateTemplate,
   useDeleteTemplate,
-  useApplyTemplateToAssets
+  useConfigureTemplateAssets
 } from '@/features/templates/hooks';
 import { useAreas } from '@/features/areas/hooks';
 import { useAssets } from '@/features/assets/hooks';
-import { useUsers } from '@/features/users/hooks';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { RequireRole } from '@/components/ui/require-role';
 import { recurrenceLabel } from '@/components/ui/status-badge';
 import { toApiError } from '@/lib/api-error';
-import { todayIso } from '@/lib/format';
-import { ChecklistTaskInput, ChecklistTemplateListItemDto, RecurrenceType } from '@/types/api';
+import {
+  ChecklistTaskInput,
+  ChecklistTemplateListItemDto,
+  CustomRecurrenceMode,
+  DayOfWeekName,
+  RecurrenceIntervalUnit,
+  RecurrenceType
+} from '@/types/api';
 
 const recurrences: RecurrenceType[] = ['Daily', 'Weekly', 'Monthly', 'Custom'];
+
+const intervalUnits: { value: RecurrenceIntervalUnit; label: string }[] = [
+  { value: 'Days', label: 'Días' },
+  { value: 'Weeks', label: 'Semanas' },
+  { value: 'Months', label: 'Meses' }
+];
+
+const daysOfWeek: { value: DayOfWeekName; label: string }[] = [
+  { value: 'Monday', label: 'Lun' },
+  { value: 'Tuesday', label: 'Mar' },
+  { value: 'Wednesday', label: 'Mié' },
+  { value: 'Thursday', label: 'Jue' },
+  { value: 'Friday', label: 'Vie' },
+  { value: 'Saturday', label: 'Sáb' },
+  { value: 'Sunday', label: 'Dom' }
+];
 
 interface FormState {
   name: string;
@@ -26,6 +47,11 @@ interface FormState {
   areaId: string;
   recurrenceType: RecurrenceType;
   estimatedDurationMinutes: number;
+  scheduledTime: string;
+  customRecurrenceMode: CustomRecurrenceMode | '';
+  recurrenceIntervalValue: string;
+  recurrenceIntervalUnit: RecurrenceIntervalUnit | '';
+  recurrenceDaysOfWeek: DayOfWeekName[];
   tasks: ChecklistTaskInput[];
 }
 
@@ -43,9 +69,26 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
           areaId: existing.data.areaId,
           recurrenceType: existing.data.recurrenceType,
           estimatedDurationMinutes: existing.data.estimatedDurationMinutes,
-          tasks: existing.data.tasks.map((t) => ({ name: t.name, order: t.order }))
+          scheduledTime: existing.data.scheduledTime,
+          customRecurrenceMode: existing.data.customRecurrenceMode ?? '',
+          recurrenceIntervalValue: existing.data.recurrenceIntervalValue ? String(existing.data.recurrenceIntervalValue) : '',
+          recurrenceIntervalUnit: existing.data.recurrenceIntervalUnit ?? '',
+          recurrenceDaysOfWeek: existing.data.recurrenceDaysOfWeek,
+          tasks: existing.data.tasks.map((t) => ({ name: t.name, description: t.description ?? '', order: t.order }))
         }
-      : { name: '', description: '', areaId: '', recurrenceType: 'Daily', estimatedDurationMinutes: 15, tasks: [] }
+      : {
+          name: '',
+          description: '',
+          areaId: '',
+          recurrenceType: 'Daily',
+          estimatedDurationMinutes: 15,
+          scheduledTime: '08:00',
+          customRecurrenceMode: '',
+          recurrenceIntervalValue: '',
+          recurrenceIntervalUnit: '',
+          recurrenceDaysOfWeek: [],
+          tasks: []
+        }
   );
 
   if (templateId && existing.isLoading) {
@@ -54,12 +97,12 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
 
   const pending = createTemplate.isPending || updateTemplate.isPending;
 
-  function updateTask(index: number, name: string) {
-    setForm((f) => ({ ...f, tasks: f.tasks.map((t, i) => (i === index ? { ...t, name } : t)) }));
+  function updateTask(index: number, patch: Partial<ChecklistTaskInput>) {
+    setForm((f) => ({ ...f, tasks: f.tasks.map((t, i) => (i === index ? { ...t, ...patch } : t)) }));
   }
 
   function addTask() {
-    setForm((f) => ({ ...f, tasks: [...f.tasks, { name: '', order: f.tasks.length + 1 }] }));
+    setForm((f) => ({ ...f, tasks: [...f.tasks, { name: '', description: '', order: f.tasks.length + 1 }] }));
   }
 
   function removeTask(index: number) {
@@ -79,6 +122,15 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
     });
   }
 
+  function toggleDayOfWeek(day: DayOfWeekName) {
+    setForm((f) => ({
+      ...f,
+      recurrenceDaysOfWeek: f.recurrenceDaysOfWeek.includes(day)
+        ? f.recurrenceDaysOfWeek.filter((d) => d !== day)
+        : [...f.recurrenceDaysOfWeek, day]
+    }));
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -90,13 +142,35 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
       setError('Agrega al menos una tarea y completa su nombre.');
       return;
     }
+    if (form.recurrenceType === 'Custom') {
+      if (!form.customRecurrenceMode) {
+        setError('Selecciona un modo de recurrencia personalizada.');
+        return;
+      }
+      if (form.customRecurrenceMode === 'Interval' && (!form.recurrenceIntervalValue || Number(form.recurrenceIntervalValue) <= 0 || !form.recurrenceIntervalUnit)) {
+        setError('Completa el intervalo (cantidad y unidad).');
+        return;
+      }
+      if (form.customRecurrenceMode === 'DaysOfWeek' && form.recurrenceDaysOfWeek.length === 0) {
+        setError('Selecciona al menos un día de la semana.');
+        return;
+      }
+    }
     const input = {
       name: form.name,
       description: form.description || null,
       areaId: form.areaId,
       recurrenceType: form.recurrenceType,
       estimatedDurationMinutes: Number(form.estimatedDurationMinutes),
-      tasks: form.tasks
+      scheduledTime: form.scheduledTime,
+      customRecurrenceMode: form.recurrenceType === 'Custom' ? (form.customRecurrenceMode || null) : null,
+      recurrenceIntervalValue:
+        form.recurrenceType === 'Custom' && form.customRecurrenceMode === 'Interval' ? Number(form.recurrenceIntervalValue) : null,
+      recurrenceIntervalUnit:
+        form.recurrenceType === 'Custom' && form.customRecurrenceMode === 'Interval' ? (form.recurrenceIntervalUnit || null) : null,
+      recurrenceDaysOfWeek:
+        form.recurrenceType === 'Custom' && form.customRecurrenceMode === 'DaysOfWeek' ? form.recurrenceDaysOfWeek : null,
+      tasks: form.tasks.map((t) => ({ ...t, description: t.description || null }))
     };
     try {
       if (templateId) {
@@ -147,6 +221,15 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
             </select>
           </div>
           <div className="field">
+            <label>Hora programada</label>
+            <input
+              type="time"
+              value={form.scheduledTime}
+              onChange={(e) => setForm((f) => ({ ...f, scheduledTime: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="field">
             <label>Duración estimada (min)</label>
             <input
               type="number"
@@ -165,14 +248,94 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
           </div>
         </div>
 
+        {form.recurrenceType === 'Custom' && (
+          <div className="panel" style={{ marginTop: 16, background: '#fafbfc' }}>
+            <label style={{ fontSize: 12, fontWeight: 600 }}>Recurrencia personalizada</label>
+            <div style={{ display: 'flex', gap: 18, marginTop: 10 }}>
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
+                <input
+                  type="radio"
+                  name="customMode"
+                  checked={form.customRecurrenceMode === 'Interval'}
+                  onChange={() => setForm((f) => ({ ...f, customRecurrenceMode: 'Interval' }))}
+                />
+                Intervalo
+              </label>
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
+                <input
+                  type="radio"
+                  name="customMode"
+                  checked={form.customRecurrenceMode === 'DaysOfWeek'}
+                  onChange={() => setForm((f) => ({ ...f, customRecurrenceMode: 'DaysOfWeek' }))}
+                />
+                Días específicos
+              </label>
+            </div>
+
+            {form.customRecurrenceMode === 'Interval' && (
+              <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center' }}>
+                <span className="muted" style={{ fontSize: 13 }}>
+                  Cada
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  style={{ width: 80 }}
+                  value={form.recurrenceIntervalValue}
+                  onChange={(e) => setForm((f) => ({ ...f, recurrenceIntervalValue: e.target.value }))}
+                />
+                <select
+                  value={form.recurrenceIntervalUnit}
+                  onChange={(e) => setForm((f) => ({ ...f, recurrenceIntervalUnit: e.target.value as RecurrenceIntervalUnit }))}
+                >
+                  <option value="" disabled>
+                    Unidad
+                  </option>
+                  {intervalUnits.map((u) => (
+                    <option key={u.value} value={u.value}>
+                      {u.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {form.customRecurrenceMode === 'DaysOfWeek' && (
+              <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+                {daysOfWeek.map((d) => (
+                  <label
+                    key={d.value}
+                    style={{ display: 'flex', gap: 5, alignItems: 'center', fontSize: 13, border: '1px solid #dfe3ea', borderRadius: 7, padding: '5px 10px' }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.recurrenceDaysOfWeek.includes(d.value)}
+                      onChange={() => toggleDayOfWeek(d.value)}
+                    />
+                    {d.label}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ marginTop: 18 }}>
           <label style={{ fontSize: 12, fontWeight: 600 }}>Tareas</label>
           {form.tasks.map((t, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
-              <span className="muted" style={{ width: 20 }}>
+            <div key={i} style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'flex-start' }}>
+              <span className="muted" style={{ width: 20, marginTop: 10 }}>
                 {i + 1}.
               </span>
-              <input style={{ flex: 1 }} value={t.name} onChange={(e) => updateTask(i, e.target.value)} placeholder="Nombre de la tarea" />
+              <div style={{ flex: 1, display: 'grid', gap: 6 }}>
+                <input value={t.name} onChange={(e) => updateTask(i, { name: e.target.value })} placeholder="Nombre de la tarea" />
+                <input
+                  value={t.description ?? ''}
+                  onChange={(e) => updateTask(i, { description: e.target.value })}
+                  placeholder="Descripción (opcional)"
+                  style={{ fontSize: 12 }}
+                />
+              </div>
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => moveTask(i, -1)} disabled={i === 0}>
                 ↑
               </button>
@@ -202,35 +365,34 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
   );
 }
 
-function ApplyToAssetsPanel({ template, onClose }: { template: ChecklistTemplateListItemDto; onClose: () => void }) {
-  const assets = useAssets({ areaId: template.areaId, active: true });
-  const users = useUsers({ active: true });
-  const applyMutation = useApplyTemplateToAssets();
+function ConfigureAssetsPanel({ templateId, onClose }: { templateId: string; onClose: () => void }) {
+  const template = useTemplate(templateId);
+  const assets = useAssets({ areaId: template.data?.areaId, active: true });
+  const configureMutation = useConfigureTemplateAssets();
   const [selected, setSelected] = useState<string[]>([]);
-  const [date, setDate] = useState(todayIso());
-  const [assignedUserId, setAssignedUserId] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ created: number; skipped: number } | null>(null);
+
+  useEffect(() => {
+    if (template.data) setSelected(template.data.assetIds);
+  }, [template.data]);
+
+  const assetList = assets.data ?? [];
+  const allSelected = assetList.length > 0 && assetList.every((a) => selected.includes(a.id));
 
   function toggle(id: string) {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   }
 
+  function toggleAll() {
+    setSelected(allSelected ? [] : assetList.map((a) => a.id));
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setResult(null);
-    if (selected.length === 0) {
-      setError('Selecciona al menos un activo.');
-      return;
-    }
     try {
-      const res = await applyMutation.mutateAsync({
-        id: template.id,
-        input: { assetIds: selected, date, assignedUserId: assignedUserId || null }
-      });
-      setResult({ created: res.created, skipped: res.skipped });
-      setSelected([]);
+      await configureMutation.mutateAsync({ id: templateId, input: { assetIds: selected } });
+      onClose();
     } catch (err) {
       setError(toApiError(err).message);
     }
@@ -238,50 +400,38 @@ function ApplyToAssetsPanel({ template, onClose }: { template: ChecklistTemplate
 
   return (
     <div className="panel" style={{ marginBottom: 20, maxWidth: 620 }}>
-      <h2 className="card-title">Aplicar &quot;{template.name}&quot; a activos</h2>
-      <p className="card-sub">Crea una instancia de checklist por cada activo seleccionado.</p>
+      <h2 className="card-title">Configurar activos {template.data ? `de "${template.data.name}"` : ''}</h2>
+      <p className="card-sub">Los activos asociados serán usados por la generación programada de checklists.</p>
       <ErrorBanner message={error} />
-      {result && (
-        <div className="error-banner success">
-          Creados: {result.created} · Omitidos (ya existían): {result.skipped}
-        </div>
-      )}
       <form onSubmit={onSubmit}>
-        <div className="form-grid">
-          <div className="field">
-            <label>Fecha</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>Asignar a (opcional)</label>
-            <select value={assignedUserId} onChange={(e) => setAssignedUserId(e.target.value)}>
-              <option value="">Sin asignar</option>
-              {(users.data ?? []).map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
+        {template.isLoading || assets.isLoading ? (
+          <p className="muted">Cargando activos…</p>
+        ) : (
+          <>
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 0', fontSize: 13, fontWeight: 600, borderBottom: '1px solid var(--line)' }}>
+              <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={assetList.length === 0} />
+              Seleccionar todos
+            </label>
+            <div style={{ maxHeight: 220, overflow: 'auto', marginTop: 8 }}>
+              {assetList.map((a) => (
+                <label key={a.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 0', fontSize: 13 }}>
+                  <input type="checkbox" checked={selected.includes(a.id)} onChange={() => toggle(a.id)} />
+                  {a.name}
+                </label>
               ))}
-            </select>
-          </div>
-        </div>
-        <div style={{ marginTop: 14 }}>
-          <label style={{ fontSize: 12, fontWeight: 600 }}>Activos del área</label>
-          <div style={{ maxHeight: 220, overflow: 'auto', marginTop: 8 }}>
-            {(assets.data ?? []).map((a) => (
-              <label key={a.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 0', fontSize: 13 }}>
-                <input type="checkbox" checked={selected.includes(a.id)} onChange={() => toggle(a.id)} />
-                {a.name}
-              </label>
-            ))}
-            {assets.data && assets.data.length === 0 && <p className="muted">No hay activos activos en esta área.</p>}
-          </div>
-        </div>
+              {assetList.length === 0 && <p className="muted">No hay activos activos en esta área.</p>}
+            </div>
+          </>
+        )}
+        <p className="muted" style={{ fontSize: 13, fontWeight: 600, marginTop: 14 }}>
+          {selected.length} activos seleccionados
+        </p>
         <div className="form-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>
             Cerrar
           </button>
-          <button className="btn btn-primary" disabled={applyMutation.isPending}>
-            {applyMutation.isPending ? 'Aplicando…' : 'Aplicar'}
+          <button className="btn btn-primary" disabled={configureMutation.isPending}>
+            {configureMutation.isPending ? 'Guardando…' : 'Guardar'}
           </button>
         </div>
       </form>
@@ -294,7 +444,7 @@ export default function TemplatesPage() {
   const templates = useTemplates();
   const deleteTemplate = useDeleteTemplate();
   const [editing, setEditing] = useState<string | 'new' | null>(null);
-  const [applying, setApplying] = useState<ChecklistTemplateListItemDto | null>(null);
+  const [configuringId, setConfiguringId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const areaName = (id: string) => areas.data?.find((a) => a.id === id)?.name ?? '—';
@@ -324,7 +474,7 @@ export default function TemplatesPage() {
 
       <ErrorBanner message={error} />
       {editing && <TemplateForm templateId={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}
-      {applying && <ApplyToAssetsPanel template={applying} onClose={() => setApplying(null)} />}
+      {configuringId && <ConfigureAssetsPanel templateId={configuringId} onClose={() => setConfiguringId(null)} />}
 
       <div className="table-wrap">
         <table className="table">
@@ -333,7 +483,9 @@ export default function TemplatesPage() {
               <th>Nombre</th>
               <th>Área</th>
               <th>Recurrencia</th>
+              <th>Hora</th>
               <th>Tareas</th>
+              <th>Activos</th>
               <th>Duración</th>
               <th></th>
             </tr>
@@ -346,18 +498,20 @@ export default function TemplatesPage() {
                 </td>
                 <td>{areaName(t.areaId)}</td>
                 <td>{recurrenceLabel(t.recurrenceType)}</td>
+                <td>{t.scheduledTime}</td>
                 <td>{t.taskCount} tareas</td>
+                <td>{t.assetCount} activos</td>
                 <td>{t.estimatedDurationMinutes} min</td>
                 <td className="actions">
                   <button onClick={() => setEditing(t.id)}>Editar</button>
-                  <button onClick={() => setApplying(t)}>Aplicar a activos</button>
+                  <button onClick={() => setConfiguringId(t.id)}>Configurar activos</button>
                   <button onClick={() => onDelete(t)}>Eliminar</button>
                 </td>
               </tr>
             ))}
             {templates.isLoading && (
               <tr>
-                <td colSpan={6} className="muted">
+                <td colSpan={8} className="muted">
                   Cargando…
                 </td>
               </tr>

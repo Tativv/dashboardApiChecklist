@@ -35,11 +35,11 @@ export function useDeleteTemplate() {
   });
 }
 
-export function useApplyTemplateToAssets() {
+export function useConfigureTemplateAssets() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: api.ApplyToAssetsInput }) =>
-      api.applyTemplateToAssets(id, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['checklist-instances'] })
+    mutationFn: ({ id, input }: { id: string; input: api.ConfigureAssetsInput }) =>
+      api.configureTemplateAssets(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY })
   });
 }

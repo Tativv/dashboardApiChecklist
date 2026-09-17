@@ -1,6 +1,9 @@
 export type UserRole = 'Admin' | 'Supervisor' | 'Operator' | 'Manager';
 export type ChecklistStatus = 'Pending' | 'InProgress' | 'Completed' | 'Approved';
 export type RecurrenceType = 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
+export type CustomRecurrenceMode = 'Interval' | 'DaysOfWeek';
+export type RecurrenceIntervalUnit = 'Days' | 'Weeks' | 'Months';
+export type DayOfWeekName = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 
 export interface UserDto {
   id: string;
@@ -26,11 +29,13 @@ export interface AssetDto {
 export interface ChecklistTaskDto {
   id: string;
   name: string;
+  description?: string | null;
   order: number;
 }
 
 export interface ChecklistTaskInput {
   name: string;
+  description?: string | null;
   order: number;
 }
 
@@ -41,7 +46,14 @@ export interface ChecklistTemplateDto {
   areaId: string;
   recurrenceType: RecurrenceType;
   estimatedDurationMinutes: number;
+  scheduledTime: string;
+  recurrenceStartDate: string;
+  customRecurrenceMode?: CustomRecurrenceMode | null;
+  recurrenceIntervalValue?: number | null;
+  recurrenceIntervalUnit?: RecurrenceIntervalUnit | null;
+  recurrenceDaysOfWeek: DayOfWeekName[];
   tasks: ChecklistTaskDto[];
+  assetIds: string[];
 }
 
 export interface ChecklistTemplateListItemDto {
@@ -50,7 +62,9 @@ export interface ChecklistTemplateListItemDto {
   areaId: string;
   recurrenceType: RecurrenceType;
   estimatedDurationMinutes: number;
+  scheduledTime: string;
   taskCount: number;
+  assetCount: number;
 }
 
 export interface ChecklistTaskExecutionDto {
