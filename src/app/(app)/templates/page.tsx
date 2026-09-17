@@ -26,17 +26,17 @@ import {
 const recurrences: RecurrenceType[] = ['Daily', 'Weekly', 'Monthly', 'Custom'];
 
 const intervalUnits: { value: RecurrenceIntervalUnit; label: string }[] = [
-  { value: 'Days', label: 'Días' },
+  { value: 'Days', label: 'Dias' },
   { value: 'Weeks', label: 'Semanas' },
   { value: 'Months', label: 'Meses' }
 ];
 
 const daysOfWeek: { value: DayOfWeekName; label: string }[] = [
-  { value: 'Monday', label: 'Lun' },
-  { value: 'Tuesday', label: 'Mar' },
-  { value: 'Wednesday', label: 'Mié' },
-  { value: 'Thursday', label: 'Jue' },
-  { value: 'Friday', label: 'Vie' },
+  { value: 'Monday', label: 'Seg' },
+  { value: 'Tuesday', label: 'Ter' },
+  { value: 'Wednesday', label: 'Qua' },
+  { value: 'Thursday', label: 'Qui' },
+  { value: 'Friday', label: 'Sex' },
   { value: 'Saturday', label: 'Sáb' },
   { value: 'Sunday', label: 'Dom' }
 ];
@@ -92,7 +92,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
   );
 
   if (templateId && existing.isLoading) {
-    return <div className="panel">Cargando template…</div>;
+    return <div className="panel">Carregando template…</div>;
   }
 
   const pending = createTemplate.isPending || updateTemplate.isPending;
@@ -135,24 +135,24 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
     e.preventDefault();
     setError(null);
     if (!form.areaId) {
-      setError('Selecciona un área.');
+      setError('Selecione o setor.');
       return;
     }
     if (form.tasks.length === 0 || form.tasks.some((t) => !t.name.trim())) {
-      setError('Agrega al menos una tarea y completa su nombre.');
+      setError('Adicione pelo menos uma tarefa e preencha o nome.');
       return;
     }
     if (form.recurrenceType === 'Custom') {
       if (!form.customRecurrenceMode) {
-        setError('Selecciona un modo de recurrencia personalizada.');
+        setError('Selecione um modo de recorrência personalizada.');
         return;
       }
       if (form.customRecurrenceMode === 'Interval' && (!form.recurrenceIntervalValue || Number(form.recurrenceIntervalValue) <= 0 || !form.recurrenceIntervalUnit)) {
-        setError('Completa el intervalo (cantidad y unidad).');
+        setError('Preencha o intervalo (quantidade e unidade).');
         return;
       }
       if (form.customRecurrenceMode === 'DaysOfWeek' && form.recurrenceDaysOfWeek.length === 0) {
-        setError('Selecciona al menos un día de la semana.');
+        setError('Selecione pelo menos um dia da semana.');
         return;
       }
     }
@@ -186,19 +186,19 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
 
   return (
     <div className="panel" style={{ marginBottom: 20, maxWidth: 780 }}>
-      <h2 className="card-title">{templateId ? 'Editar template' : 'Crear template'}</h2>
+      <h2 className="card-title">{templateId ? 'Editar template' : 'Criar template'}</h2>
       <ErrorBanner message={error} />
       <form onSubmit={onSubmit}>
         <div className="form-grid">
           <div className="field">
-            <label>Nombre</label>
+            <label>Nome</label>
             <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required maxLength={200} />
           </div>
           <div className="field">
-            <label>Área</label>
+            <label>Setor</label>
             <select value={form.areaId} onChange={(e) => setForm((f) => ({ ...f, areaId: e.target.value }))}>
               <option value="" disabled>
-                Selecciona un área
+                Selecione o Setor
               </option>
               {(areas.data ?? []).map((a) => (
                 <option key={a.id} value={a.id}>
@@ -208,7 +208,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
             </select>
           </div>
           <div className="field">
-            <label>Recurrencia</label>
+            <label>Recorrência</label>
             <select
               value={form.recurrenceType}
               onChange={(e) => setForm((f) => ({ ...f, recurrenceType: e.target.value as RecurrenceType }))}
@@ -221,7 +221,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
             </select>
           </div>
           <div className="field">
-            <label>Hora programada</label>
+            <label>Horário programado</label>
             <input
               type="time"
               value={form.scheduledTime}
@@ -230,7 +230,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
             />
           </div>
           <div className="field">
-            <label>Duración estimada (min)</label>
+            <label>Duração estimada (min)</label>
             <input
               type="number"
               min={1}
@@ -239,7 +239,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
             />
           </div>
           <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <label>Descripción</label>
+            <label>Descrição</label>
             <input
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -250,7 +250,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
 
         {form.recurrenceType === 'Custom' && (
           <div className="panel" style={{ marginTop: 16, background: '#fafbfc' }}>
-            <label style={{ fontSize: 12, fontWeight: 600 }}>Recurrencia personalizada</label>
+            <label style={{ fontSize: 12, fontWeight: 600 }}>Recorrência personalizada</label>
             <div style={{ display: 'flex', gap: 18, marginTop: 10 }}>
               <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
                 <input
@@ -268,14 +268,14 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
                   checked={form.customRecurrenceMode === 'DaysOfWeek'}
                   onChange={() => setForm((f) => ({ ...f, customRecurrenceMode: 'DaysOfWeek' }))}
                 />
-                Días específicos
+                Dias específicos
               </label>
             </div>
 
             {form.customRecurrenceMode === 'Interval' && (
               <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center' }}>
                 <span className="muted" style={{ fontSize: 13 }}>
-                  Cada
+                  A cada
                 </span>
                 <input
                   type="number"
@@ -289,7 +289,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
                   onChange={(e) => setForm((f) => ({ ...f, recurrenceIntervalUnit: e.target.value as RecurrenceIntervalUnit }))}
                 >
                   <option value="" disabled>
-                    Unidad
+                    Unidade
                   </option>
                   {intervalUnits.map((u) => (
                     <option key={u.value} value={u.value}>
@@ -321,18 +321,18 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
         )}
 
         <div style={{ marginTop: 18 }}>
-          <label style={{ fontSize: 12, fontWeight: 600 }}>Tareas</label>
+          <label style={{ fontSize: 12, fontWeight: 600 }}>Tarefas</label>
           {form.tasks.map((t, i) => (
             <div key={i} style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'flex-start' }}>
               <span className="muted" style={{ width: 20, marginTop: 10 }}>
                 {i + 1}.
               </span>
               <div style={{ flex: 1, display: 'grid', gap: 6 }}>
-                <input value={t.name} onChange={(e) => updateTask(i, { name: e.target.value })} placeholder="Nombre de la tarea" />
+                <input value={t.name} onChange={(e) => updateTask(i, { name: e.target.value })} placeholder="Nome da tarefa" />
                 <input
                   value={t.description ?? ''}
                   onChange={(e) => updateTask(i, { description: e.target.value })}
-                  placeholder="Descripción (opcional)"
+                  placeholder="Descrição (opcional)"
                   style={{ fontSize: 12 }}
                 />
               </div>
@@ -343,12 +343,12 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
                 ↓
               </button>
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => removeTask(i)}>
-                Quitar
+                Remover
               </button>
             </div>
           ))}
           <button type="button" className="btn btn-secondary" style={{ marginTop: 10 }} onClick={addTask}>
-            + Agregar tarea
+            + Adicionar tarefa
           </button>
         </div>
 
@@ -357,7 +357,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
             Cancelar
           </button>
           <button className="btn btn-primary" disabled={pending}>
-            {pending ? 'Guardando…' : 'Guardar'}
+            {pending ? 'Salvando…' : 'Salvar'}
           </button>
         </div>
       </form>
@@ -400,17 +400,17 @@ function ConfigureAssetsPanel({ templateId, onClose }: { templateId: string; onC
 
   return (
     <div className="panel" style={{ marginBottom: 20, maxWidth: 620 }}>
-      <h2 className="card-title">Configurar activos {template.data ? `de "${template.data.name}"` : ''}</h2>
-      <p className="card-sub">Los activos asociados serán usados por la generación programada de checklists.</p>
+      <h2 className="card-title">Configurar ativos {template.data ? `de "${template.data.name}"` : ''}</h2>
+      <p className="card-sub">Os ativos associados serão usados pela geração programada de checklists.</p>
       <ErrorBanner message={error} />
       <form onSubmit={onSubmit}>
         {template.isLoading || assets.isLoading ? (
-          <p className="muted">Cargando activos…</p>
+          <p className="muted">Carregando ativos…</p>
         ) : (
           <>
             <label style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 0', fontSize: 13, fontWeight: 600, borderBottom: '1px solid var(--line)' }}>
               <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={assetList.length === 0} />
-              Seleccionar todos
+              Selecionar todos
             </label>
             <div style={{ maxHeight: 220, overflow: 'auto', marginTop: 8 }}>
               {assetList.map((a) => (
@@ -419,19 +419,19 @@ function ConfigureAssetsPanel({ templateId, onClose }: { templateId: string; onC
                   {a.name}
                 </label>
               ))}
-              {assetList.length === 0 && <p className="muted">No hay activos activos en esta área.</p>}
+              {assetList.length === 0 && <p className="muted">Nenhum ativo disponível neste setor.</p>}
             </div>
           </>
         )}
         <p className="muted" style={{ fontSize: 13, fontWeight: 600, marginTop: 14 }}>
-          {selected.length} activos seleccionados
+          {selected.length} ativos selecionados
         </p>
         <div className="form-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>
-            Cerrar
+            Fechar
           </button>
           <button className="btn btn-primary" disabled={configureMutation.isPending}>
-            {configureMutation.isPending ? 'Guardando…' : 'Guardar'}
+            {configureMutation.isPending ? 'Salvando…' : 'Salvar'}
           </button>
         </div>
       </form>
@@ -450,7 +450,7 @@ export default function TemplatesPage() {
   const areaName = (id: string) => areas.data?.find((a) => a.id === id)?.name ?? '—';
 
   async function onDelete(t: ChecklistTemplateListItemDto) {
-    if (!window.confirm(`¿Eliminar el template "${t.name}"?`)) return;
+    if (!window.confirm(`Excluir o template "${t.name}"?`)) return;
     setError(null);
     try {
       await deleteTemplate.mutateAsync(t.id);
@@ -465,10 +465,10 @@ export default function TemplatesPage() {
       <div className="toolbar">
         <div>
           <h1 className="page-title">Templates</h1>
-          <p className="page-subtitle">Configuración operacional del hotel.</p>
+          <p className="page-subtitle">Configuração operacional do hotel.</p>
         </div>
         <button className="btn btn-primary" onClick={() => setEditing('new')}>
-          + Crear template
+          + Criar template
         </button>
       </div>
 
@@ -480,13 +480,13 @@ export default function TemplatesPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Nombre</th>
-              <th>Área</th>
-              <th>Recurrencia</th>
-              <th>Hora</th>
-              <th>Tareas</th>
-              <th>Activos</th>
-              <th>Duración</th>
+              <th>Nome</th>
+              <th>Setor</th>
+              <th>Recorrência</th>
+              <th>Horário</th>
+              <th>Tarefas</th>
+              <th>Ativos</th>
+              <th>Duração</th>
               <th></th>
             </tr>
           </thead>
@@ -499,20 +499,20 @@ export default function TemplatesPage() {
                 <td>{areaName(t.areaId)}</td>
                 <td>{recurrenceLabel(t.recurrenceType)}</td>
                 <td>{t.scheduledTime}</td>
-                <td>{t.taskCount} tareas</td>
-                <td>{t.assetCount} activos</td>
+                <td>{t.taskCount} tarefas</td>
+                <td>{t.assetCount} ativos</td>
                 <td>{t.estimatedDurationMinutes} min</td>
                 <td className="actions">
                   <button onClick={() => setEditing(t.id)}>Editar</button>
-                  <button onClick={() => setConfiguringId(t.id)}>Configurar activos</button>
-                  <button onClick={() => onDelete(t)}>Eliminar</button>
+                  <button onClick={() => setConfiguringId(t.id)}>Configurar ativos</button>
+                  <button onClick={() => onDelete(t)}>Excluir</button>
                 </td>
               </tr>
             ))}
             {templates.isLoading && (
               <tr>
                 <td colSpan={8} className="muted">
-                  Cargando…
+                  Carregando…
                 </td>
               </tr>
             )}
