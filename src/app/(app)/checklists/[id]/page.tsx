@@ -12,11 +12,11 @@ import {
   useCompleteTask,
   useUploadEvidence
 } from '@/features/checklist-instances/hooks';
-import { StatusBadge, isOverdue } from '@/components/ui/status-badge';
+import { StatusBadge, TaskExecutionStatusBadge, isOverdue } from '@/components/ui/status-badge';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { EvidenceThumb } from '@/components/ui/evidence-thumb';
 import { toApiError } from '@/lib/api-error';
-import { formatDate, formatDateTime, formatDuration } from '@/lib/format';
+import { formatDate, formatDateTime, formatDuration, formatTime } from '@/lib/format';
 
 interface UploadedEvidence {
   id: string;
@@ -89,7 +89,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
     }
   }
 
-  const allTasksCompleted = instance.taskExecutions.every((t) => t.completed);
+  const allTasksCompleted = instance.taskExecutions.every((t) => t.status === 'Completed');
 
   return (
     <div className="page">
@@ -131,7 +131,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="toolbar" style={{ marginTop: 20 }}>
         <span className="muted" style={{ fontSize: 13 }}>
-          {instance.taskExecutions.filter((t) => t.completed).length}/{instance.taskExecutions.length} tareas completadas
+          {instance.taskExecutions.filter((t) => t.status === 'Completed').length}/{instance.taskExecutions.length} tareas completadas
         </span>
         <div style={{ display: 'flex', gap: 10 }}>
           {instance.status === 'Pending' && (
@@ -187,22 +187,35 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
             <tr>
               <th></th>
               <th>Tarea</th>
+              <th>Horario</th>
+              <th>Estado</th>
               <th>Comentario</th>
               <th>Evidencia</th>
             </tr>
           </thead>
           <tbody>
-            {instance.taskExecutions.map((t) => (
-              <tr key={t.id} className={t.completed ? 'task-row completed' : 'task-row'}>
+            {[...instance.taskExecutions]
+              .sort((a, b) => {
+                if (!a.scheduledForUtc && !b.scheduledForUtc) return 0;
+                if (!a.scheduledForUtc) return 1;
+                if (!b.scheduledForUtc) return -1;
+                return a.scheduledForUtc.localeCompare(b.scheduledForUtc);
+              })
+              .map((t) => (
+              <tr key={t.id} className={t.status === 'Completed' ? 'task-row completed' : 'task-row'}>
                 <td>
                   <input
                     type="checkbox"
-                    checked={t.completed}
+                    checked={t.status === 'Completed'}
                     disabled={instance.status !== 'InProgress' || completeTaskMutation.isPending}
                     onChange={(e) => onToggleTask(t.id, e.target.checked)}
                   />
                 </td>
                 <td>{t.taskName}</td>
+                <td className="muted">{t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Continua'}</td>
+                <td>
+                  <TaskExecutionStatusBadge status={t.status} />
+                </td>
                 <td className="muted">{t.comment || '—'}</td>
                 <td>
                   <div className="evidence-list">

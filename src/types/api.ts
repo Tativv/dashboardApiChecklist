@@ -1,9 +1,23 @@
 export type UserRole = 'Admin' | 'Supervisor' | 'Operator' | 'Manager';
 export type ChecklistStatus = 'Pending' | 'InProgress' | 'Completed' | 'Approved';
-export type RecurrenceType = 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
-export type CustomRecurrenceMode = 'Interval' | 'DaysOfWeek';
-export type RecurrenceIntervalUnit = 'Days' | 'Weeks' | 'Months';
 export type DayOfWeekName = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+export type ScheduleFrequencyType = 'Daily' | 'Weekly' | 'Monthly';
+export type TaskExecutionMode = 'Scheduled' | 'Continuous';
+export type TaskExecutionStatus = 'Pending' | 'Completed' | 'Skipped';
+
+export interface ScheduleInput {
+  frequencyType: ScheduleFrequencyType;
+  intervalValue: number;
+  weekDay?: DayOfWeekName | null;
+  dayOfMonth?: number | null;
+  timeOfDay: string;
+  executionOrder: number;
+}
+
+export interface ScheduleDto extends ScheduleInput {
+  id: string;
+  active: boolean;
+}
 
 export interface UserDto {
   id: string;
@@ -31,12 +45,16 @@ export interface ChecklistTaskDto {
   name: string;
   description?: string | null;
   order: number;
+  executionMode: TaskExecutionMode;
+  schedules: ScheduleDto[];
 }
 
 export interface ChecklistTaskInput {
   name: string;
   description?: string | null;
   order: number;
+  executionMode: TaskExecutionMode;
+  schedules: ScheduleInput[];
 }
 
 export interface ChecklistTemplateDto {
@@ -44,14 +62,8 @@ export interface ChecklistTemplateDto {
   name: string;
   description?: string | null;
   areaId: string;
-  recurrenceType: RecurrenceType;
   estimatedDurationMinutes: number;
-  scheduledTime: string;
-  recurrenceStartDate: string;
-  customRecurrenceMode?: CustomRecurrenceMode | null;
-  recurrenceIntervalValue?: number | null;
-  recurrenceIntervalUnit?: RecurrenceIntervalUnit | null;
-  recurrenceDaysOfWeek: DayOfWeekName[];
+  schedules: ScheduleDto[];
   tasks: ChecklistTaskDto[];
   assetIds: string[];
 }
@@ -60,9 +72,8 @@ export interface ChecklistTemplateListItemDto {
   id: string;
   name: string;
   areaId: string;
-  recurrenceType: RecurrenceType;
   estimatedDurationMinutes: number;
-  scheduledTime: string;
+  scheduleCount: number;
   taskCount: number;
   assetCount: number;
 }
@@ -72,10 +83,22 @@ export interface ChecklistTaskExecutionDto {
   taskId: string;
   taskName: string;
   order: number;
-  completed: boolean;
-  completedAt?: string | null;
+  status: TaskExecutionStatus;
+  scheduledForUtc?: string | null;
+  executedAtUtc?: string | null;
   comment?: string | null;
+  completedByUserId?: string | null;
   evidenceCount: number;
+}
+
+export interface UpcomingOccurrenceDto {
+  templateId: string;
+  templateName: string;
+  assetId: string;
+  assetName: string;
+  date: string;
+  scheduledTime: string;
+  alreadyGenerated: boolean;
 }
 
 export interface ChecklistInstanceDetailDto {

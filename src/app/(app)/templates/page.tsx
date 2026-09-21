@@ -12,47 +12,21 @@ import { useAreas } from '@/features/areas/hooks';
 import { useAssets } from '@/features/assets/hooks';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { RequireRole } from '@/components/ui/require-role';
-import { recurrenceLabel } from '@/components/ui/status-badge';
+import { ScheduleEditor, emptySchedule } from '@/components/ui/schedule-editor';
 import { toApiError } from '@/lib/api-error';
-import {
-  ChecklistTaskInput,
-  ChecklistTemplateListItemDto,
-  CustomRecurrenceMode,
-  DayOfWeekName,
-  RecurrenceIntervalUnit,
-  RecurrenceType
-} from '@/types/api';
-
-const recurrences: RecurrenceType[] = ['Daily', 'Weekly', 'Monthly', 'Custom'];
-
-const intervalUnits: { value: RecurrenceIntervalUnit; label: string }[] = [
-  { value: 'Days', label: 'Dias' },
-  { value: 'Weeks', label: 'Semanas' },
-  { value: 'Months', label: 'Meses' }
-];
-
-const daysOfWeek: { value: DayOfWeekName; label: string }[] = [
-  { value: 'Monday', label: 'Seg' },
-  { value: 'Tuesday', label: 'Ter' },
-  { value: 'Wednesday', label: 'Qua' },
-  { value: 'Thursday', label: 'Qui' },
-  { value: 'Friday', label: 'Sex' },
-  { value: 'Saturday', label: 'Sáb' },
-  { value: 'Sunday', label: 'Dom' }
-];
+import { ChecklistTaskInput, ChecklistTemplateListItemDto, ScheduleInput, TaskExecutionMode } from '@/types/api';
 
 interface FormState {
   name: string;
   description: string;
   areaId: string;
-  recurrenceType: RecurrenceType;
   estimatedDurationMinutes: number;
-  scheduledTime: string;
-  customRecurrenceMode: CustomRecurrenceMode | '';
-  recurrenceIntervalValue: string;
-  recurrenceIntervalUnit: RecurrenceIntervalUnit | '';
-  recurrenceDaysOfWeek: DayOfWeekName[];
+  schedules: ScheduleInput[];
   tasks: ChecklistTaskInput[];
+}
+
+function emptyTask(order: number): ChecklistTaskInput {
+  return { name: '', description: '', order, executionMode: 'Scheduled', schedules: [emptySchedule(0)] };
 }
 
 function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: () => void }) {
@@ -67,26 +41,22 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
           name: existing.data.name,
           description: existing.data.description ?? '',
           areaId: existing.data.areaId,
-          recurrenceType: existing.data.recurrenceType,
           estimatedDurationMinutes: existing.data.estimatedDurationMinutes,
-          scheduledTime: existing.data.scheduledTime ?? '08:00',
-          customRecurrenceMode: existing.data.customRecurrenceMode ?? '',
-          recurrenceIntervalValue: existing.data.recurrenceIntervalValue ? String(existing.data.recurrenceIntervalValue) : '',
-          recurrenceIntervalUnit: existing.data.recurrenceIntervalUnit ?? '',
-          recurrenceDaysOfWeek: existing.data.recurrenceDaysOfWeek ?? [],
-          tasks: existing.data.tasks.map((t) => ({ name: t.name, description: t.description ?? '', order: t.order }))
+          schedules: existing.data.schedules.map((s) => ({ ...s })),
+          tasks: existing.data.tasks.map((t) => ({
+            name: t.name,
+            description: t.description ?? '',
+            order: t.order,
+            executionMode: t.executionMode,
+            schedules: t.schedules.map((s) => ({ ...s }))
+          }))
         }
       : {
           name: '',
           description: '',
           areaId: '',
-          recurrenceType: 'Daily',
           estimatedDurationMinutes: 15,
-          scheduledTime: '08:00',
-          customRecurrenceMode: '',
-          recurrenceIntervalValue: '',
-          recurrenceIntervalUnit: '',
-          recurrenceDaysOfWeek: [],
+          schedules: [emptySchedule(0)],
           tasks: []
         }
   );
@@ -101,8 +71,12 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
     setForm((f) => ({ ...f, tasks: f.tasks.map((t, i) => (i === index ? { ...t, ...patch } : t)) }));
   }
 
+  function setTaskExecutionMode(index: number, mode: TaskExecutionMode) {
+    updateTask(index, { executionMode: mode, schedules: mode === 'Scheduled' ? [emptySchedule(0)] : [] });
+  }
+
   function addTask() {
-    setForm((f) => ({ ...f, tasks: [...f.tasks, { name: '', description: '', order: f.tasks.length + 1 }] }));
+    setForm((f) => ({ ...f, tasks: [...f.tasks, emptyTask(f.tasks.length + 1)] }));
   }
 
   function removeTask(index: number) {
@@ -122,15 +96,6 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
     });
   }
 
-  function toggleDayOfWeek(day: DayOfWeekName) {
-    setForm((f) => ({
-      ...f,
-      recurrenceDaysOfWeek: f.recurrenceDaysOfWeek.includes(day)
-        ? f.recurrenceDaysOfWeek.filter((d) => d !== day)
-        : [...f.recurrenceDaysOfWeek, day]
-    }));
-  }
-
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -138,38 +103,32 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
       setError('Selecione o setor.');
       return;
     }
+    if (form.schedules.length === 0) {
+      setError('Adicione pelo menos um horário de execução.');
+      return;
+    }
+    if (form.schedules.some((s) => s.frequencyType === 'Weekly' && !s.weekDay)) {
+      setError('Selecione o dia da semana em todos os horários semanais.');
+      return;
+    }
+    if (form.schedules.some((s) => s.frequencyType === 'Monthly' && !s.dayOfMonth)) {
+      setError('Informe o dia do mês em todos os horários mensais.');
+      return;
+    }
     if (form.tasks.length === 0 || form.tasks.some((t) => !t.name.trim())) {
       setError('Adicione pelo menos uma tarefa e preencha o nome.');
       return;
     }
-    if (form.recurrenceType === 'Custom') {
-      if (!form.customRecurrenceMode) {
-        setError('Selecione um modo de recorrência personalizada.');
-        return;
-      }
-      if (form.customRecurrenceMode === 'Interval' && (!form.recurrenceIntervalValue || Number(form.recurrenceIntervalValue) <= 0 || !form.recurrenceIntervalUnit)) {
-        setError('Preencha o intervalo (quantidade e unidade).');
-        return;
-      }
-      if (form.customRecurrenceMode === 'DaysOfWeek' && form.recurrenceDaysOfWeek.length === 0) {
-        setError('Selecione pelo menos um dia da semana.');
-        return;
-      }
+    if (form.tasks.some((t) => t.executionMode === 'Scheduled' && t.schedules.length === 0)) {
+      setError('Toda tarefa agendada precisa de pelo menos um horário.');
+      return;
     }
     const input = {
       name: form.name,
       description: form.description || null,
       areaId: form.areaId,
-      recurrenceType: form.recurrenceType,
       estimatedDurationMinutes: Number(form.estimatedDurationMinutes),
-      scheduledTime: form.scheduledTime,
-      customRecurrenceMode: form.recurrenceType === 'Custom' ? (form.customRecurrenceMode || null) : null,
-      recurrenceIntervalValue:
-        form.recurrenceType === 'Custom' && form.customRecurrenceMode === 'Interval' ? Number(form.recurrenceIntervalValue) : null,
-      recurrenceIntervalUnit:
-        form.recurrenceType === 'Custom' && form.customRecurrenceMode === 'Interval' ? (form.recurrenceIntervalUnit || null) : null,
-      recurrenceDaysOfWeek:
-        form.recurrenceType === 'Custom' && form.customRecurrenceMode === 'DaysOfWeek' ? form.recurrenceDaysOfWeek : null,
+      schedules: form.schedules,
       tasks: form.tasks.map((t) => ({ ...t, description: t.description || null }))
     };
     try {
@@ -185,7 +144,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
   }
 
   return (
-    <div className="panel" style={{ marginBottom: 20, maxWidth: 780 }}>
+    <div className="panel" style={{ marginBottom: 20, maxWidth: 820 }}>
       <h2 className="card-title">{templateId ? 'Editar template' : 'Criar template'}</h2>
       <ErrorBanner message={error} />
       <form onSubmit={onSubmit}>
@@ -208,28 +167,6 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
             </select>
           </div>
           <div className="field">
-            <label>Recorrência</label>
-            <select
-              value={form.recurrenceType}
-              onChange={(e) => setForm((f) => ({ ...f, recurrenceType: e.target.value as RecurrenceType }))}
-            >
-              {recurrences.map((r) => (
-                <option key={r} value={r}>
-                  {recurrenceLabel(r)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label>Horário programado</label>
-            <input
-              type="time"
-              value={form.scheduledTime}
-              onChange={(e) => setForm((f) => ({ ...f, scheduledTime: e.target.value }))}
-              required
-            />
-          </div>
-          <div className="field">
             <label>Duração estimada (min)</label>
             <input
               type="number"
@@ -248,103 +185,75 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
           </div>
         </div>
 
-        {form.recurrenceType === 'Custom' && (
-          <div className="panel" style={{ marginTop: 16, background: '#fafbfc' }}>
-            <label style={{ fontSize: 12, fontWeight: 600 }}>Recorrência personalizada</label>
-            <div style={{ display: 'flex', gap: 18, marginTop: 10 }}>
-              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
-                <input
-                  type="radio"
-                  name="customMode"
-                  checked={form.customRecurrenceMode === 'Interval'}
-                  onChange={() => setForm((f) => ({ ...f, customRecurrenceMode: 'Interval' }))}
-                />
-                Intervalo
-              </label>
-              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
-                <input
-                  type="radio"
-                  name="customMode"
-                  checked={form.customRecurrenceMode === 'DaysOfWeek'}
-                  onChange={() => setForm((f) => ({ ...f, customRecurrenceMode: 'DaysOfWeek' }))}
-                />
-                Dias específicos
-              </label>
-            </div>
+        <div style={{ marginTop: 16 }}>
+          <label style={{ fontSize: 12, fontWeight: 600 }}>Horários de execução</label>
+          <p className="muted" style={{ fontSize: 12, margin: '2px 0 0' }}>
+            Cada linha é uma regra independente — para "Segunda, Quarta e Sexta às 08:00" adicione 3 horários semanais.
+          </p>
+          <ScheduleEditor schedules={form.schedules} onChange={(schedules) => setForm((f) => ({ ...f, schedules }))} />
+        </div>
 
-            {form.customRecurrenceMode === 'Interval' && (
-              <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center' }}>
-                <span className="muted" style={{ fontSize: 13 }}>
-                  A cada
-                </span>
-                <input
-                  type="number"
-                  min={1}
-                  style={{ width: 80 }}
-                  value={form.recurrenceIntervalValue}
-                  onChange={(e) => setForm((f) => ({ ...f, recurrenceIntervalValue: e.target.value }))}
-                />
-                <select
-                  value={form.recurrenceIntervalUnit}
-                  onChange={(e) => setForm((f) => ({ ...f, recurrenceIntervalUnit: e.target.value as RecurrenceIntervalUnit }))}
-                >
-                  <option value="" disabled>
-                    Unidade
-                  </option>
-                  {intervalUnits.map((u) => (
-                    <option key={u.value} value={u.value}>
-                      {u.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {form.customRecurrenceMode === 'DaysOfWeek' && (
-              <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
-                {daysOfWeek.map((d) => (
-                  <label
-                    key={d.value}
-                    style={{ display: 'flex', gap: 5, alignItems: 'center', fontSize: 13, border: '1px solid #dfe3ea', borderRadius: 7, padding: '5px 10px' }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={form.recurrenceDaysOfWeek.includes(d.value)}
-                      onChange={() => toggleDayOfWeek(d.value)}
-                    />
-                    {d.label}
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        <div style={{ marginTop: 18 }}>
+        <div style={{ marginTop: 20 }}>
           <label style={{ fontSize: 12, fontWeight: 600 }}>Tarefas</label>
           {form.tasks.map((t, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'flex-start' }}>
-              <span className="muted" style={{ width: 20, marginTop: 10 }}>
-                {i + 1}.
-              </span>
-              <div style={{ flex: 1, display: 'grid', gap: 6 }}>
-                <input value={t.name} onChange={(e) => updateTask(i, { name: e.target.value })} placeholder="Nome da tarefa" />
-                <input
-                  value={t.description ?? ''}
-                  onChange={(e) => updateTask(i, { description: e.target.value })}
-                  placeholder="Descrição (opcional)"
-                  style={{ fontSize: 12 }}
-                />
+            <div key={i} className="panel" style={{ marginTop: 8, background: '#fafbfc', padding: 14 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span className="muted" style={{ width: 20 }}>
+                  {i + 1}.
+                </span>
+                <div style={{ flex: 1, display: 'grid', gap: 6 }}>
+                  <input value={t.name} onChange={(e) => updateTask(i, { name: e.target.value })} placeholder="Nome da tarefa" />
+                  <input
+                    value={t.description ?? ''}
+                    onChange={(e) => updateTask(i, { description: e.target.value })}
+                    placeholder="Descrição (opcional)"
+                    style={{ fontSize: 12 }}
+                  />
+                </div>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => moveTask(i, -1)} disabled={i === 0}>
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => moveTask(i, 1)}
+                  disabled={i === form.tasks.length - 1}
+                >
+                  ↓
+                </button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => removeTask(i)}>
+                  Remover
+                </button>
               </div>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => moveTask(i, -1)} disabled={i === 0}>
-                ↑
-              </button>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => moveTask(i, 1)} disabled={i === form.tasks.length - 1}>
-                ↓
-              </button>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => removeTask(i)}>
-                Remover
-              </button>
+
+              <div style={{ display: 'flex', gap: 18, marginTop: 10 }}>
+                <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
+                  <input
+                    type="radio"
+                    name={`execMode-${i}`}
+                    checked={t.executionMode === 'Scheduled'}
+                    onChange={() => setTaskExecutionMode(i, 'Scheduled')}
+                  />
+                  Agendada
+                </label>
+                <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
+                  <input
+                    type="radio"
+                    name={`execMode-${i}`}
+                    checked={t.executionMode === 'Continuous'}
+                    onChange={() => setTaskExecutionMode(i, 'Continuous')}
+                  />
+                  Contínua (durante todo o turno)
+                </label>
+              </div>
+
+              {t.executionMode === 'Scheduled' && (
+                <ScheduleEditor
+                  schedules={t.schedules}
+                  onChange={(schedules) => updateTask(i, { schedules })}
+                  addLabel="+ Adicionar horário da tarefa"
+                />
+              )}
             </div>
           ))}
           <button type="button" className="btn btn-secondary" style={{ marginTop: 10 }} onClick={addTask}>
@@ -482,8 +391,7 @@ export default function TemplatesPage() {
             <tr>
               <th>Nome</th>
               <th>Setor</th>
-              <th>Recorrência</th>
-              <th>Horário</th>
+              <th>Horários</th>
               <th>Tarefas</th>
               <th>Ativos</th>
               <th>Duração</th>
@@ -497,8 +405,7 @@ export default function TemplatesPage() {
                   <b>{t.name}</b>
                 </td>
                 <td>{areaName(t.areaId)}</td>
-                <td>{recurrenceLabel(t.recurrenceType)}</td>
-                <td>{t.scheduledTime ?? '—'}</td>
+                <td>{t.scheduleCount} horário{t.scheduleCount === 1 ? '' : 's'}</td>
                 <td>{t.taskCount} tarefas</td>
                 <td>{t.assetCount ?? 0} ativos</td>
                 <td>{t.estimatedDurationMinutes} min</td>
@@ -511,7 +418,7 @@ export default function TemplatesPage() {
             ))}
             {templates.isLoading && (
               <tr>
-                <td colSpan={8} className="muted">
+                <td colSpan={7} className="muted">
                   Carregando…
                 </td>
               </tr>

@@ -1,5 +1,5 @@
 import { http } from '@/lib/http';
-import { ChecklistInstanceDetailDto, ChecklistInstanceListItemDto, ChecklistStatus } from '@/types/api';
+import { ChecklistInstanceDetailDto, ChecklistInstanceListItemDto, ChecklistStatus, UpcomingOccurrenceDto } from '@/types/api';
 
 export interface InstanceFilters {
   fromDate?: string;
@@ -31,8 +31,13 @@ export async function createInstance(input: {
   return data;
 }
 
-export async function generateDaily(date?: string): Promise<{ date: string; created: number; skipped: number }> {
-  const { data } = await http.post('/checklist-instances/generate-daily', null, { params: date ? { date } : {} });
+export async function generateScheduled(date?: string): Promise<{ date: string; created: number; skipped: number }> {
+  const { data } = await http.post('/checklist-instances/generate-scheduled', null, { params: date ? { date } : {} });
+  return data;
+}
+
+export async function getUpcomingOccurrences(from: string, to: string): Promise<UpcomingOccurrenceDto[]> {
+  const { data } = await http.get<UpcomingOccurrenceDto[]>('/checklist-instances/upcoming', { params: { from, to } });
   return data;
 }
 

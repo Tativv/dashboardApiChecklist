@@ -24,11 +24,18 @@ export function useCreateInstance() {
   });
 }
 
-export function useGenerateDaily() {
+export function useGenerateScheduled() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (date?: string) => api.generateDaily(date),
+    mutationFn: (date?: string) => api.generateScheduled(date),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY })
+  });
+}
+
+export function useUpcomingOccurrences(from: string, to: string) {
+  return useQuery({
+    queryKey: [...KEY, 'upcoming', from, to],
+    queryFn: () => api.getUpcomingOccurrences(from, to)
   });
 }
 

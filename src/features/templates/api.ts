@@ -1,25 +1,12 @@
 import { http } from '@/lib/http';
-import {
-  ChecklistTaskInput,
-  ChecklistTemplateDto,
-  ChecklistTemplateListItemDto,
-  CustomRecurrenceMode,
-  DayOfWeekName,
-  RecurrenceIntervalUnit
-} from '@/types/api';
+import { ChecklistTaskInput, ChecklistTemplateDto, ChecklistTemplateListItemDto, ScheduleInput } from '@/types/api';
 
 export interface TemplateInput {
   name: string;
   description?: string | null;
   areaId: string;
-  recurrenceType: string;
   estimatedDurationMinutes: number;
-  scheduledTime: string;
-  recurrenceStartDate?: string | null;
-  customRecurrenceMode?: CustomRecurrenceMode | null;
-  recurrenceIntervalValue?: number | null;
-  recurrenceIntervalUnit?: RecurrenceIntervalUnit | null;
-  recurrenceDaysOfWeek?: DayOfWeekName[] | null;
+  schedules: ScheduleInput[];
   tasks: ChecklistTaskInput[];
 }
 

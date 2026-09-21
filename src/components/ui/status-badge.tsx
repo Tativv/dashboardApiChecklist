@@ -1,4 +1,4 @@
-import { ChecklistStatus } from '@/types/api';
+import { ChecklistStatus, DayOfWeekName, ScheduleFrequencyType, TaskExecutionStatus } from '@/types/api';
 
 const statusClass: Record<ChecklistStatus, string> = {
   Pending: 'pending',
@@ -36,12 +36,40 @@ export function roleLabel(role: string): string {
   return labels[role] ?? role;
 }
 
-export function recurrenceLabel(recurrence: string): string {
+export function frequencyTypeLabel(frequencyType: ScheduleFrequencyType | string): string {
   const labels: Record<string, string> = {
-    Daily: 'Diaria',
+    Daily: 'Diária',
     Weekly: 'Semanal',
-    Monthly: 'Mensual',
-    Custom: 'Personalizada'
+    Monthly: 'Mensal'
   };
-  return labels[recurrence] ?? recurrence;
+  return labels[frequencyType] ?? frequencyType;
+}
+
+export function weekDayLabel(weekDay: DayOfWeekName | string): string {
+  const labels: Record<string, string> = {
+    Sunday: 'Domingo',
+    Monday: 'Segunda',
+    Tuesday: 'Terça',
+    Wednesday: 'Quarta',
+    Thursday: 'Quinta',
+    Friday: 'Sexta',
+    Saturday: 'Sábado'
+  };
+  return labels[weekDay] ?? weekDay;
+}
+
+const taskExecutionStatusClass: Record<TaskExecutionStatus, string> = {
+  Pending: 'pending',
+  Completed: 'done',
+  Skipped: 'progress'
+};
+
+const taskExecutionStatusLabel: Record<TaskExecutionStatus, string> = {
+  Pending: 'Pendente',
+  Completed: 'Concluída',
+  Skipped: 'Pulada'
+};
+
+export function TaskExecutionStatusBadge({ status }: { status: TaskExecutionStatus }) {
+  return <span className={'status ' + taskExecutionStatusClass[status]}>{taskExecutionStatusLabel[status]}</span>;
 }

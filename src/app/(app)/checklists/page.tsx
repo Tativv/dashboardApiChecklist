@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { useAuthStore, isSupervisorOrAbove } from '@/features/auth/store';
-import { useInstances, useCreateInstance, useGenerateDaily } from '@/features/checklist-instances/hooks';
+import { useInstances, useCreateInstance, useGenerateScheduled } from '@/features/checklist-instances/hooks';
 import { useTemplates } from '@/features/templates/hooks';
 import { useAssets } from '@/features/assets/hooks';
 import { useAreas } from '@/features/areas/hooks';
@@ -119,12 +119,12 @@ export default function ChecklistsPage() {
     fromDate: fromDate || undefined,
     toDate: toDate || undefined
   });
-  const generateDaily = useGenerateDaily();
+  const generateScheduled = useGenerateScheduled();
 
-  async function handleGenerateDaily() {
+  async function handleGenerateScheduled() {
     setGenMessage(null);
     try {
-      const res = await generateDaily.mutateAsync(todayIso());
+      const res = await generateScheduled.mutateAsync(todayIso());
       setGenMessage(`Generados ${res.created} checklists (${res.skipped} omitidos, ya existían).`);
     } catch (err) {
       setGenMessage(toApiError(err).message);
@@ -142,8 +142,8 @@ export default function ChecklistsPage() {
         </div>
         {canManage && (
           <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-secondary" onClick={handleGenerateDaily} disabled={generateDaily.isPending}>
-              {generateDaily.isPending ? 'Generando…' : 'Generar diarios de hoy'}
+            <button className="btn btn-secondary" onClick={handleGenerateScheduled} disabled={generateScheduled.isPending}>
+              {generateScheduled.isPending ? 'Generando…' : 'Generar programados de hoy'}
             </button>
             <button className="btn btn-primary" onClick={() => setCreating(true)}>
               + Crear checklist
