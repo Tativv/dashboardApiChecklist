@@ -1,5 +1,11 @@
 import { http } from '@/lib/http';
-import { ChecklistInstanceDetailDto, ChecklistInstanceListItemDto, ChecklistStatus, UpcomingOccurrenceDto } from '@/types/api';
+import {
+  ChecklistInstanceDetailDto,
+  ChecklistInstanceListItemDto,
+  ChecklistStatus,
+  MyAssignedTaskItemDto,
+  UpcomingOccurrenceDto
+} from '@/types/api';
 
 export interface InstanceFilters {
   fromDate?: string;
@@ -7,7 +13,6 @@ export interface InstanceFilters {
   areaId?: string;
   assetId?: string;
   status?: ChecklistStatus | 'Todos';
-  assignedUserId?: string;
 }
 
 export async function listInstances(filters: InstanceFilters = {}): Promise<ChecklistInstanceListItemDto[]> {
@@ -25,7 +30,6 @@ export async function createInstance(input: {
   templateId: string;
   assetId: string;
   date: string;
-  assignedUserId?: string | null;
 }): Promise<{ id: string }> {
   const { data } = await http.post('/checklist-instances/', input);
   return data;
@@ -70,6 +74,21 @@ export async function completeTask(
     `/checklist-instances/${instanceId}/tasks/${taskExecutionId}/complete`,
     input
   );
+  return data;
+}
+
+export async function assignTask(instanceId: string, taskExecutionId: string, userId: string | null) {
+  const { data } = await http.post(
+    `/checklist-instances/${instanceId}/tasks/${taskExecutionId}/assign`,
+    { userId }
+  );
+  return data as { id: string; assignedUserId?: string | null; createdByUserId?: string | null };
+}
+
+export async function getMyAssignedTasks(date?: string): Promise<MyAssignedTaskItemDto[]> {
+  const { data } = await http.get<MyAssignedTaskItemDto[]>('/checklist-instances/my-tasks', {
+    params: date ? { date } : {}
+  });
   return data;
 }
 

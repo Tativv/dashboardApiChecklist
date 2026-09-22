@@ -4,8 +4,8 @@ import { UserFilters } from './api';
 
 const KEY = ['users'];
 
-export function useUsers(filters: UserFilters = {}) {
-  return useQuery({ queryKey: [...KEY, filters], queryFn: () => api.listUsers(filters) });
+export function useUsers(filters: UserFilters = {}, enabled = true) {
+  return useQuery({ queryKey: [...KEY, filters], queryFn: () => api.listUsers(filters), enabled });
 }
 
 export function useCreateUser() {
@@ -19,7 +19,7 @@ export function useCreateUser() {
 export function useUpdateUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: { name: string; role: string } }) =>
+    mutationFn: ({ id, input }: { id: string; input: { name: string; role: string; areaIds: string[] } }) =>
       api.updateUser(id, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY })
   });

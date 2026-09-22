@@ -28,10 +28,10 @@ export function StatusBadge({ status, overdue }: { status: ChecklistStatus; over
 
 export function roleLabel(role: string): string {
   const labels: Record<string, string> = {
-    Admin: 'Administrador',
+    Directoria: 'Directoría',
     Supervisor: 'Supervisor',
-    Operator: 'Operador',
-    Manager: 'Gerente'
+    Colaborador: 'Colaborador',
+    Gerencia: 'Gerencia'
   };
   return labels[role] ?? role;
 }

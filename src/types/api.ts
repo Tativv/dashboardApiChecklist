@@ -1,4 +1,4 @@
-export type UserRole = 'Admin' | 'Supervisor' | 'Operator' | 'Manager';
+export type UserRole = 'Directoria' | 'Supervisor' | 'Colaborador' | 'Gerencia';
 export type ChecklistStatus = 'Pending' | 'InProgress' | 'Completed' | 'Approved';
 export type DayOfWeekName = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 export type ScheduleFrequencyType = 'Daily' | 'Weekly' | 'Monthly';
@@ -25,6 +25,7 @@ export interface UserDto {
   email: string;
   role: UserRole;
   active: boolean;
+  areaIds: string[];
 }
 
 export interface AreaDto {
@@ -87,7 +88,11 @@ export interface ChecklistTaskExecutionDto {
   scheduledForUtc?: string | null;
   executedAtUtc?: string | null;
   comment?: string | null;
-  completedByUserId?: string | null;
+  assignedUserId?: string | null;
+  createdByUserId?: string | null;
+  executedByUserId?: string | null;
+  approvedByUserId?: string | null;
+  approvedAt?: string | null;
   evidenceCount: number;
 }
 
@@ -112,9 +117,6 @@ export interface ChecklistInstanceDetailDto {
   startedAt?: string | null;
   completedAt?: string | null;
   durationSeconds?: number | null;
-  assignedUserId?: string | null;
-  approvedByUserId?: string | null;
-  approvedAt?: string | null;
   taskExecutions: ChecklistTaskExecutionDto[];
 }
 
@@ -126,8 +128,19 @@ export interface ChecklistInstanceListItemDto {
   areaId: string;
   date: string;
   status: ChecklistStatus;
-  assignedUserId?: string | null;
   durationSeconds?: number | null;
+}
+
+export interface MyAssignedTaskItemDto {
+  instanceId: string;
+  templateName: string;
+  assetId: string;
+  assetName: string;
+  date: string;
+  taskExecutionId: string;
+  taskName: string;
+  scheduledForUtc?: string | null;
+  status: TaskExecutionStatus;
 }
 
 export interface DashboardReportDto {

@@ -10,13 +10,16 @@ import {
   useApproveInstance,
   useReopenInstance,
   useCompleteTask,
+  useAssignTask,
   useUploadEvidence
 } from '@/features/checklist-instances/hooks';
+import { useUsers } from '@/features/users/hooks';
 import { StatusBadge, TaskExecutionStatusBadge, isOverdue } from '@/components/ui/status-badge';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { EvidenceThumb } from '@/components/ui/evidence-thumb';
 import { toApiError } from '@/lib/api-error';
 import { formatDate, formatDateTime, formatDuration, formatTime } from '@/lib/format';
+import { ChecklistTaskExecutionDto } from '@/types/api';
 
 interface UploadedEvidence {
   id: string;
@@ -34,12 +37,16 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   const approveMutation = useApproveInstance();
   const reopenMutation = useReopenInstance();
   const completeTaskMutation = useCompleteTask();
+  const assignTaskMutation = useAssignTask();
   const uploadEvidenceMutation = useUploadEvidence();
+  const collaboratorsQuery = useUsers({ role: 'Colaborador', active: true }, canManage);
   const [error, setError] = useState<string | null>(null);
   const [uploadedByTask, setUploadedByTask] = useState<Record<string, UploadedEvidence[]>>({});
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const instance = instanceQuery.data;
+  const collaborators = collaboratorsQuery.data ?? [];
+  const collaboratorNameById = new Map(collaborators.map((c) => [c.id, c.name]));
 
   if (instanceQuery.isLoading) {
     return (
@@ -58,8 +65,12 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
     );
   }
 
-  const canActOnAssignment =
-    !instance.assignedUserId || instance.assignedUserId === user?.id || canManage;
+  const hasAssignedTaskHere = instance.taskExecutions.some((t) => t.assignedUserId === user?.id);
+  const canActOnAssignment = canManage || hasAssignedTaskHere;
+
+  function canCompleteTask(t: ChecklistTaskExecutionDto): boolean {
+    return canManage || t.assignedUserId === user?.id;
+  }
 
   async function runAction(fn: () => Promise<unknown>) {
     setError(null);
@@ -73,6 +84,12 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   async function onToggleTask(taskExecutionId: string, completed: boolean) {
     await runAction(() =>
       completeTaskMutation.mutateAsync({ instanceId: id, taskExecutionId, input: { completed } })
+    );
+  }
+
+  async function onAssignTask(taskExecutionId: string, userId: string) {
+    await runAction(() =>
+      assignTaskMutation.mutateAsync({ instanceId: id, taskExecutionId, userId: userId || null })
     );
   }
 
@@ -125,7 +142,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
         </div>
         <div>
           <span className="kpi-label">Aprobado</span>
-          <div>{formatDateTime(instance.approvedAt)}</div>
+          <div>{formatDateTime(instance.taskExecutions.find((t) => t.approvedAt)?.approvedAt)}</div>
         </div>
       </div>
 
@@ -138,7 +155,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
             <button
               className="btn btn-primary"
               disabled={!canActOnAssignment || startMutation.isPending}
-              title={!canActOnAssignment ? 'Solo el usuario asignado o un supervisor pueden iniciar' : ''}
+              title={!canActOnAssignment ? 'Solo un colaborador con una tarea asignada acá o un supervisor pueden iniciar' : ''}
               onClick={() => runAction(() => startMutation.mutateAsync(id))}
             >
               Iniciar
@@ -152,7 +169,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                 !allTasksCompleted
                   ? 'Completa todas las tareas antes de finalizar'
                   : !canActOnAssignment
-                    ? 'Solo el usuario asignado o un supervisor pueden finalizar'
+                    ? 'Solo un colaborador con una tarea asignada acá o un supervisor pueden finalizar'
                     : ''
               }
               onClick={() => runAction(() => finishMutation.mutateAsync(id))}
@@ -188,6 +205,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
               <th></th>
               <th>Tarea</th>
               <th>Horario</th>
+              <th>Asignado a</th>
               <th>Estado</th>
               <th>Comentario</th>
               <th>Evidencia</th>
@@ -207,12 +225,37 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                   <input
                     type="checkbox"
                     checked={t.status === 'Completed'}
-                    disabled={instance.status !== 'InProgress' || completeTaskMutation.isPending}
+                    disabled={instance.status !== 'InProgress' || !canCompleteTask(t) || completeTaskMutation.isPending}
+                    title={!canCompleteTask(t) ? 'Solo el colaborador asignado o un supervisor pueden completar esta tarea' : ''}
                     onChange={(e) => onToggleTask(t.id, e.target.checked)}
                   />
                 </td>
                 <td>{t.taskName}</td>
                 <td className="muted">{t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Continua'}</td>
+                <td>
+                  {canManage && (instance.status === 'Pending' || instance.status === 'InProgress') ? (
+                    <select
+                      className="btn btn-secondary btn-sm"
+                      value={t.assignedUserId ?? ''}
+                      disabled={assignTaskMutation.isPending}
+                      onChange={(e) => onAssignTask(t.id, e.target.value)}
+                    >
+                      <option value="">Sin asignar</option>
+                      {collaborators.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="muted">
+                      {t.assignedUserId
+                        ? (collaboratorNameById.get(t.assignedUserId) ??
+                            (t.assignedUserId === user?.id ? 'Tú' : 'Asignada'))
+                        : 'Sin asignar'}
+                    </span>
+                  )}
+                </td>
                 <td>
                   <TaskExecutionStatusBadge status={t.status} />
                 </td>

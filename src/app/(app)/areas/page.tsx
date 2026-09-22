@@ -73,7 +73,7 @@ export default function AreasPage() {
   }
 
   return (
-    <RequireRole roles={['Admin', 'Supervisor', 'Manager']}>
+    <RequireRole roles={['Directoria', 'Supervisor', 'Gerencia']}>
     <div className="page">
       <div className="toolbar">
         <div>

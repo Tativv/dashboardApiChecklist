@@ -1,32 +1,39 @@
 'use client';
 import { useState } from 'react';
 import { useUsers, useCreateUser, useUpdateUser, useDeactivateUser } from '@/features/users/hooks';
+import { useAreas } from '@/features/areas/hooks';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { RequireRole } from '@/components/ui/require-role';
 import { roleLabel } from '@/components/ui/status-badge';
 import { toApiError } from '@/lib/api-error';
-import { UserDto, UserRole } from '@/types/api';
+import { AreaDto, UserDto, UserRole } from '@/types/api';
 
-const roles: UserRole[] = ['Admin', 'Supervisor', 'Operator', 'Manager'];
+const roles: UserRole[] = ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia'];
 
 function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void }) {
+  const areas = useAreas();
   const [name, setName] = useState(initial?.name ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>(initial?.role ?? 'Operator');
+  const [role, setRole] = useState<UserRole>(initial?.role ?? 'Colaborador');
+  const [areaIds, setAreaIds] = useState<string[]>(initial?.areaIds ?? []);
   const [error, setError] = useState<string | null>(null);
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const pending = createUser.isPending || updateUser.isPending;
+
+  function toggleArea(areaId: string) {
+    setAreaIds((prev) => (prev.includes(areaId) ? prev.filter((a) => a !== areaId) : [...prev, areaId]));
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     try {
       if (initial) {
-        await updateUser.mutateAsync({ id: initial.id, input: { name, role } });
+        await updateUser.mutateAsync({ id: initial.id, input: { name, role, areaIds } });
       } else {
-        await createUser.mutateAsync({ name, email, password, role });
+        await createUser.mutateAsync({ name, email, password, role, areaIds });
       }
       onClose();
     } catch (err) {
@@ -62,7 +69,14 @@ function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void
           )}
           <div className="field">
             <label>Rol</label>
-            <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
+            <select
+              value={role}
+              onChange={(e) => {
+                const nextRole = e.target.value as UserRole;
+                setRole(nextRole);
+                if (nextRole !== 'Supervisor') setAreaIds([]);
+              }}
+            >
               {roles.map((r) => (
                 <option key={r} value={r}>
                   {roleLabel(r)}
@@ -71,6 +85,24 @@ function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void
             </select>
           </div>
         </div>
+        {role === 'Supervisor' && (
+          <div className="field" style={{ marginTop: 12 }}>
+            <label>Áreas que cubre</label>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              {(areas.data ?? []).map((a: AreaDto) => (
+                <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400 }}>
+                  <input
+                    type="checkbox"
+                    checked={areaIds.includes(a.id)}
+                    onChange={() => toggleArea(a.id)}
+                  />
+                  {a.name}
+                </label>
+              ))}
+              {(areas.data ?? []).length === 0 && <span className="muted">No hay áreas configuradas.</span>}
+            </div>
+          </div>
+        )}
         <div className="form-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>
             Cancelar
@@ -86,7 +118,9 @@ function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void
 
 export default function UsersPage() {
   const users = useUsers();
+  const areas = useAreas();
   const deactivateUser = useDeactivateUser();
+  const areaNameById = new Map((areas.data ?? []).map((a) => [a.id, a.name]));
   const [editing, setEditing] = useState<UserDto | 'new' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,7 +135,7 @@ export default function UsersPage() {
   }
 
   return (
-    <RequireRole roles={['Admin']}>
+    <RequireRole roles={['Directoria']}>
       <div className="page">
         <div className="toolbar">
           <div>
@@ -123,6 +157,7 @@ export default function UsersPage() {
                 <th>Nombre</th>
                 <th>Correo</th>
                 <th>Rol</th>
+                <th>Áreas</th>
                 <th>Estado</th>
                 <th></th>
               </tr>
@@ -133,6 +168,11 @@ export default function UsersPage() {
                   <td>{u.name}</td>
                   <td>{u.email}</td>
                   <td>{roleLabel(u.role)}</td>
+                  <td className="muted">
+                    {u.areaIds.length > 0
+                      ? u.areaIds.map((id) => areaNameById.get(id) ?? id).join(', ')
+                      : '—'}
+                  </td>
                   <td>
                     <span className={'status ' + (u.active ? 'approved' : 'overdue')}>
                       {u.active ? 'Activo' : 'Inactivo'}
@@ -146,7 +186,7 @@ export default function UsersPage() {
               ))}
               {users.isLoading && (
                 <tr>
-                  <td colSpan={5} className="muted">
+                  <td colSpan={6} className="muted">
                     Cargando…
                   </td>
                 </tr>

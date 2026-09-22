@@ -68,8 +68,8 @@ export default function LoginPage() {
           {isSubmitting ? 'Ingresando…' : 'Ingresar'}
         </button>
         <p className="muted" style={{ fontSize: 12, marginTop: 18, lineHeight: 1.6 }}>
-          Demo: admin@hotelchecklist.local / Admin123!<br />
-          supervisor@hotelchecklist.local / Supervisor123!
+          Demo: admin@hotelchecklist.local / Admin123! (Directoria)<br />
+          supervisor@hotelchecklist.local / Supervisor123! (Supervisor)
         </p>
       </form>
     </div>

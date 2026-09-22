@@ -92,6 +92,33 @@ export function useCompleteTask() {
   });
 }
 
+export function useAssignTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      instanceId,
+      taskExecutionId,
+      userId
+    }: {
+      instanceId: string;
+      taskExecutionId: string;
+      userId: string | null;
+    }) => api.assignTask(instanceId, taskExecutionId, userId),
+    onSuccess: (_data, { instanceId }) => {
+      qc.invalidateQueries({ queryKey: [...KEY, instanceId] });
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ['my-assigned-tasks'] });
+    }
+  });
+}
+
+export function useMyAssignedTasks(date?: string) {
+  return useQuery({
+    queryKey: ['my-assigned-tasks', date],
+    queryFn: () => api.getMyAssignedTasks(date)
+  });
+}
+
 export function useUploadEvidence() {
   const qc = useQueryClient();
   return useMutation({

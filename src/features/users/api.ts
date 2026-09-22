@@ -21,12 +21,16 @@ export async function createUser(input: {
   email: string;
   password: string;
   role: string;
+  areaIds: string[];
 }): Promise<UserDto> {
   const { data } = await http.post<UserDto>('/users/', input);
   return data;
 }
 
-export async function updateUser(id: string, input: { name: string; role: string }): Promise<UserDto> {
+export async function updateUser(
+  id: string,
+  input: { name: string; role: string; areaIds: string[] }
+): Promise<UserDto> {
   const { data } = await http.put<UserDto>(`/users/${id}`, input);
   return data;
 }

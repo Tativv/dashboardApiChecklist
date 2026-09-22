@@ -9,6 +9,7 @@ import { roleLabel } from '@/components/ui/status-badge';
 const nav: [string, string, string][] = [
   ['/dashboard', '▦', 'Resumen'],
   ['/checklists', '☑', 'Checklists'],
+  ['/my-tasks', '✓', 'Mis tareas'],
   ['/templates', '▤', 'Templates'],
   ['/areas', '⌖', 'Áreas'],
   ['/assets', '▧', 'Activos'],
@@ -18,14 +19,15 @@ const nav: [string, string, string][] = [
 ];
 
 const access: Record<string, UserRole[]> = {
-  '/users': ['Admin'],
-  '/settings': ['Admin', 'Supervisor', 'Operator', 'Manager'],
-  '/templates': ['Admin', 'Supervisor', 'Manager'],
-  '/areas': ['Admin', 'Supervisor', 'Manager'],
-  '/assets': ['Admin', 'Supervisor', 'Manager'],
-  '/reports': ['Admin', 'Supervisor', 'Manager'],
-  '/dashboard': ['Admin', 'Supervisor', 'Operator', 'Manager'],
-  '/checklists': ['Admin', 'Supervisor', 'Operator', 'Manager']
+  '/users': ['Directoria'],
+  '/settings': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia'],
+  '/templates': ['Directoria', 'Supervisor', 'Gerencia'],
+  '/areas': ['Directoria', 'Supervisor', 'Gerencia'],
+  '/assets': ['Directoria', 'Supervisor', 'Gerencia'],
+  '/reports': ['Directoria', 'Supervisor', 'Gerencia'],
+  '/dashboard': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia'],
+  '/checklists': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia'],
+  '/my-tasks': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia']
 };
 
 function initials(name: string): string {
@@ -42,7 +44,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const role = user?.role ?? 'Operator';
+  const role = user?.role ?? 'Colaborador';
   const activeSection = '/' + (pathname.split('/')[1] ?? '');
   const [menuOpen, setMenuOpen] = useState(false);
 

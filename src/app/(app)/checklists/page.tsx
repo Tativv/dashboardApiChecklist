@@ -44,7 +44,7 @@ function CreateInstancePanel({ onClose }: { onClose: () => void }) {
       return;
     }
     try {
-      await createInstance.mutateAsync({ ...values, assignedUserId: null });
+      await createInstance.mutateAsync(values);
       onClose();
     } catch (err) {
       setError(toApiError(err).message);

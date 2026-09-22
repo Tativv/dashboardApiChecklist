@@ -40,5 +40,9 @@ export function isSessionValid(): boolean {
 }
 
 export function isSupervisorOrAbove(role: UserRole | undefined): boolean {
-  return role === 'Admin' || role === 'Manager' || role === 'Supervisor';
+  return role === 'Directoria' || role === 'Gerencia' || role === 'Supervisor';
+}
+
+export function isExactlySupervisor(role: UserRole | undefined): boolean {
+  return role === 'Supervisor';
 }

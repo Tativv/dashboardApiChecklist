@@ -11,7 +11,7 @@ export default function ReportsPage() {
   const byArea = useByAreaReport({ fromDate, toDate });
 
   return (
-    <RequireRole roles={['Admin', 'Supervisor', 'Manager']}>
+    <RequireRole roles={['Directoria', 'Supervisor', 'Gerencia']}>
       <div className="page">
         <div className="toolbar">
           <div>
