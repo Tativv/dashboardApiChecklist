@@ -46,3 +46,7 @@ export function isSupervisorOrAbove(role: UserRole | undefined): boolean {
 export function isExactlySupervisor(role: UserRole | undefined): boolean {
   return role === 'Supervisor';
 }
+
+export function isManagerOrAbove(role: UserRole | undefined): boolean {
+  return role === 'Directoria' || role === 'Gerencia';
+}

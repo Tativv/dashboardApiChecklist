@@ -2,8 +2,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
-import { useAuthStore, isSupervisorOrAbove } from '@/features/auth/store';
-import { useInstances, useCreateInstance, useGenerateScheduled } from '@/features/checklist-instances/hooks';
+import { useAuthStore, isManagerOrAbove } from '@/features/auth/store';
+import { useInstances, useCreateInstance, useGenerateScheduled, useDeleteInstance } from '@/features/checklist-instances/hooks';
 import { useTemplates } from '@/features/templates/hooks';
 import { useAssets } from '@/features/assets/hooks';
 import { useAreas } from '@/features/areas/hooks';
@@ -104,14 +104,15 @@ function CreateInstancePanel({ onClose }: { onClose: () => void }) {
 
 export default function ChecklistsPage() {
   const user = useAuthStore((s) => s.user);
-  const canManage = isSupervisorOrAbove(user?.role);
+  const canManageInstances = isManagerOrAbove(user?.role);
   const areas = useAreas();
   const [creating, setCreating] = useState(false);
   const [status, setStatus] = useState<ChecklistStatus | 'Todos'>('Todos');
   const [areaId, setAreaId] = useState('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState(todayIso());
+  const [toDate, setToDate] = useState(todayIso());
   const [genMessage, setGenMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const instances = useInstances({
     status,
@@ -120,6 +121,7 @@ export default function ChecklistsPage() {
     toDate: toDate || undefined
   });
   const generateScheduled = useGenerateScheduled();
+  const deleteInstance = useDeleteInstance();
 
   async function handleGenerateScheduled() {
     setGenMessage(null);
@@ -128,6 +130,16 @@ export default function ChecklistsPage() {
       setGenMessage(`Generados ${res.created} checklists (${res.skipped} omitidos, ya existían).`);
     } catch (err) {
       setGenMessage(toApiError(err).message);
+    }
+  }
+
+  async function handleDelete(id: string, templateName: string) {
+    if (!window.confirm(`¿Eliminar el checklist "${templateName}"? Esta acción no se puede deshacer.`)) return;
+    setError(null);
+    try {
+      await deleteInstance.mutateAsync(id);
+    } catch (err) {
+      setError(toApiError(err).message);
     }
   }
 
@@ -140,7 +152,7 @@ export default function ChecklistsPage() {
           <h1 className="page-title">Checklists</h1>
           <p className="page-subtitle">Gestiona las ejecuciones operativas del hotel.</p>
         </div>
-        {canManage && (
+        {canManageInstances && (
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="btn btn-secondary" onClick={handleGenerateScheduled} disabled={generateScheduled.isPending}>
               {generateScheduled.isPending ? 'Generando…' : 'Generar programados de hoy'}
@@ -153,6 +165,7 @@ export default function ChecklistsPage() {
       </div>
 
       {genMessage && <ErrorBanner message={genMessage} />}
+      <ErrorBanner message={error} />
       {creating && <CreateInstancePanel onClose={() => setCreating(false)} />}
 
       <div className="toolbar" style={{ flexWrap: 'wrap' }}>
@@ -213,6 +226,11 @@ export default function ChecklistsPage() {
                 </td>
                 <td className="actions">
                   <Link href={`/checklists/${x.id}`}>Ver</Link>
+                  {canManageInstances && (
+                    <button onClick={() => handleDelete(x.id, x.templateName)} disabled={deleteInstance.isPending}>
+                      Eliminar
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

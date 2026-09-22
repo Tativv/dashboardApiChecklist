@@ -32,6 +32,14 @@ export function useGenerateScheduled() {
   });
 }
 
+export function useDeleteInstance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.deleteInstance,
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY })
+  });
+}
+
 export function useUpcomingOccurrences(from: string, to: string) {
   return useQuery({
     queryKey: [...KEY, 'upcoming', from, to],

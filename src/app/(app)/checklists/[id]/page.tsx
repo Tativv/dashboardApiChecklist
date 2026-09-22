@@ -2,7 +2,7 @@
 import { use, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuthStore, isSupervisorOrAbove } from '@/features/auth/store';
+import { useAuthStore, isSupervisorOrAbove, isManagerOrAbove } from '@/features/auth/store';
 import {
   useInstance,
   useStartInstance,
@@ -11,6 +11,7 @@ import {
   useReopenInstance,
   useCompleteTask,
   useAssignTask,
+  useDeleteInstance,
   useUploadEvidence
 } from '@/features/checklist-instances/hooks';
 import { useUsers } from '@/features/users/hooks';
@@ -31,6 +32,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const canManage = isSupervisorOrAbove(user?.role);
+  const canManageInstances = isManagerOrAbove(user?.role);
   const instanceQuery = useInstance(id);
   const startMutation = useStartInstance();
   const finishMutation = useFinishInstance();
@@ -38,6 +40,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   const reopenMutation = useReopenInstance();
   const completeTaskMutation = useCompleteTask();
   const assignTaskMutation = useAssignTask();
+  const deleteInstanceMutation = useDeleteInstance();
   const uploadEvidenceMutation = useUploadEvidence();
   const collaboratorsQuery = useUsers({ role: 'Colaborador', active: true }, canManage);
   const [error, setError] = useState<string | null>(null);
@@ -66,10 +69,22 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   }
 
   const hasAssignedTaskHere = instance.taskExecutions.some((t) => t.assignedUserId === user?.id);
-  const canActOnAssignment = canManage || hasAssignedTaskHere;
+  const canActOnAssignment = canManageInstances || hasAssignedTaskHere;
+  const allTasksAssigned = instance.taskExecutions.every((t) => !!t.assignedUserId);
 
   function canCompleteTask(t: ChecklistTaskExecutionDto): boolean {
-    return canManage || t.assignedUserId === user?.id;
+    return canManageInstances || t.assignedUserId === user?.id;
+  }
+
+  async function onDelete() {
+    if (!window.confirm(`¿Eliminar el checklist "${instance?.templateName}"? Esta acción no se puede deshacer.`)) return;
+    setError(null);
+    try {
+      await deleteInstanceMutation.mutateAsync(id);
+      router.push('/checklists');
+    } catch (err) {
+      setError(toApiError(err).message);
+    }
   }
 
   async function runAction(fn: () => Promise<unknown>) {
@@ -154,8 +169,14 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
           {instance.status === 'Pending' && (
             <button
               className="btn btn-primary"
-              disabled={!canActOnAssignment || startMutation.isPending}
-              title={!canActOnAssignment ? 'Solo un colaborador con una tarea asignada acá o un supervisor pueden iniciar' : ''}
+              disabled={!allTasksAssigned || !canActOnAssignment || startMutation.isPending}
+              title={
+                !allTasksAssigned
+                  ? 'Todas las tareas deben tener un responsable asignado antes de iniciar'
+                  : !canActOnAssignment
+                    ? 'Solo un colaborador con una tarea asignada acá o gerencia/dirección pueden iniciar'
+                    : ''
+              }
               onClick={() => runAction(() => startMutation.mutateAsync(id))}
             >
               Iniciar
@@ -169,7 +190,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                 !allTasksCompleted
                   ? 'Completa todas las tareas antes de finalizar'
                   : !canActOnAssignment
-                    ? 'Solo un colaborador con una tarea asignada acá o un supervisor pueden finalizar'
+                    ? 'Solo un colaborador con una tarea asignada acá o gerencia/dirección pueden finalizar'
                     : ''
               }
               onClick={() => runAction(() => finishMutation.mutateAsync(id))}
@@ -186,13 +207,18 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
               Aprobar
             </button>
           )}
-          {(instance.status === 'Completed' || instance.status === 'Approved') && canManage && (
+          {(instance.status === 'Completed' || instance.status === 'Approved') && canManageInstances && (
             <button
               className="btn btn-secondary"
               disabled={reopenMutation.isPending}
               onClick={() => runAction(() => reopenMutation.mutateAsync({ id }))}
             >
               Reabrir
+            </button>
+          )}
+          {canManageInstances && (
+            <button className="btn btn-secondary" disabled={deleteInstanceMutation.isPending} onClick={onDelete}>
+              Eliminar
             </button>
           )}
         </div>
@@ -226,7 +252,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                     type="checkbox"
                     checked={t.status === 'Completed'}
                     disabled={instance.status !== 'InProgress' || !canCompleteTask(t) || completeTaskMutation.isPending}
-                    title={!canCompleteTask(t) ? 'Solo el colaborador asignado o un supervisor pueden completar esta tarea' : ''}
+                    title={!canCompleteTask(t) ? 'Solo el colaborador asignado o gerencia/dirección pueden completar esta tarea' : ''}
                     onChange={(e) => onToggleTask(t.id, e.target.checked)}
                   />
                 </td>

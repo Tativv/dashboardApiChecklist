@@ -35,6 +35,10 @@ export async function createInstance(input: {
   return data;
 }
 
+export async function deleteInstance(id: string): Promise<void> {
+  await http.delete(`/checklist-instances/${id}`);
+}
+
 export async function generateScheduled(date?: string): Promise<{ date: string; created: number; skipped: number }> {
   const { data } = await http.post('/checklist-instances/generate-scheduled', null, { params: date ? { date } : {} });
   return data;
