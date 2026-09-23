@@ -15,8 +15,8 @@ export default function ReportsPage() {
       <div className="page">
         <div className="toolbar">
           <div>
-            <h1 className="page-title">Reportes</h1>
-            <p className="page-subtitle">Desempeño operativo por fecha y por área.</p>
+            <h1 className="page-title">Relatórios</h1>
+            <p className="page-subtitle">Desempenho operacional por data e por área.</p>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <input type="date" className="btn btn-secondary" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
@@ -26,19 +26,20 @@ export default function ReportsPage() {
 
         <div className="grid">
           <section className="card">
-            <h2 className="card-title">Por fecha</h2>
-            <p className="card-sub">Volumen y cumplimiento diario</p>
+            <h2 className="card-title">Por data</h2>
+            <p className="card-sub">Volume e cumprimento diário</p>
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Fecha</th>
+                    <th>Data</th>
                     <th>Total</th>
-                    <th>Pendiente</th>
-                    <th>En progreso</th>
-                    <th>Finalizado</th>
-                    <th>Aprobado</th>
-                    <th>Duración prom.</th>
+                    <th>Pendente</th>
+                    <th>Aprovado</th>
+                    <th>Em andamento</th>
+                    <th>Concluído</th>
+                    <th>Revisado</th>
+                    <th>Duração méd.</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -47,23 +48,24 @@ export default function ReportsPage() {
                       <td>{formatDate(r.date)}</td>
                       <td>{r.total}</td>
                       <td>{r.pending}</td>
+                      <td>{r.approved}</td>
                       <td>{r.inProgress}</td>
                       <td>{r.completed}</td>
-                      <td>{r.approved}</td>
+                      <td>{r.reviewed}</td>
                       <td>{formatDuration(r.averageDurationSeconds)}</td>
                     </tr>
                   ))}
                   {byDate.isLoading && (
                     <tr>
-                      <td colSpan={7} className="muted">
-                        Cargando…
+                      <td colSpan={8} className="muted">
+                        Carregando…
                       </td>
                     </tr>
                   )}
                   {!byDate.isLoading && (byDate.data ?? []).length === 0 && (
                     <tr>
-                      <td colSpan={7} className="muted">
-                        Sin datos para el período seleccionado.
+                      <td colSpan={8} className="muted">
+                        Sem dados para o período selecionado.
                       </td>
                     </tr>
                   )}
@@ -74,16 +76,16 @@ export default function ReportsPage() {
 
           <section className="card">
             <h2 className="card-title">Por área</h2>
-            <p className="card-sub">Distribución por área operativa</p>
+            <p className="card-sub">Distribuição por área operacional</p>
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
                     <th>Área</th>
                     <th>Total</th>
-                    <th>Finalizado</th>
-                    <th>Aprobado</th>
-                    <th>Duración prom.</th>
+                    <th>Concluído</th>
+                    <th>Revisado</th>
+                    <th>Duração méd.</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -92,21 +94,21 @@ export default function ReportsPage() {
                       <td>{r.areaName}</td>
                       <td>{r.total}</td>
                       <td>{r.completed}</td>
-                      <td>{r.approved}</td>
+                      <td>{r.reviewed}</td>
                       <td>{formatDuration(r.averageDurationSeconds)}</td>
                     </tr>
                   ))}
                   {byArea.isLoading && (
                     <tr>
                       <td colSpan={5} className="muted">
-                        Cargando…
+                        Carregando…
                       </td>
                     </tr>
                   )}
                   {!byArea.isLoading && (byArea.data ?? []).length === 0 && (
                     <tr>
                       <td colSpan={5} className="muted">
-                        Sin datos para el período seleccionado.
+                        Sem dados para o período selecionado.
                       </td>
                     </tr>
                   )}

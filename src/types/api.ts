@@ -146,9 +146,10 @@ export interface MyAssignedTaskItemDto {
 export interface DashboardReportDto {
   total: number;
   pending: number;
+  approved: number;
   inProgress: number;
   completed: number;
-  approved: number;
+  reviewed: number;
   overdue: number;
   averageDurationSeconds?: number | null;
   completionRatePercent: number;
@@ -158,9 +159,10 @@ export interface ByDateReportItemDto {
   date: string;
   total: number;
   pending: number;
+  approved: number;
   inProgress: number;
   completed: number;
-  approved: number;
+  reviewed: number;
   averageDurationSeconds?: number | null;
 }
 
@@ -169,9 +171,10 @@ export interface ByAreaReportItemDto {
   areaName: string;
   total: number;
   pending: number;
+  approved: number;
   inProgress: number;
   completed: number;
-  approved: number;
+  reviewed: number;
   averageDurationSeconds?: number | null;
 }
 

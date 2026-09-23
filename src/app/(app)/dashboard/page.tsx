@@ -31,19 +31,19 @@ export default function DashboardPage() {
 
   return (
     <div className="page">
-      <h1 className="page-title">Hola, {user?.name?.split(' ')[0] ?? ''}</h1>
-      <p className="page-subtitle">Aquí está el estado operativo del hotel hoy.</p>
+      <h1 className="page-title">Olá, {user?.name?.split(' ')[0] ?? ''}</h1>
+      <p className="page-subtitle">Este é o status operacional do hotel hoje.</p>
 
       {canSeeReports ? (
         <div className="kpis">
           <K label="Total" value={report ? String(report.total) : '—'} />
-          <K label="Pendientes" value={report ? String(report.pending) : '—'} />
+          <K label="Pendentes" value={report ? String(report.pending) : '—'} />
           <K
-            label="Finalizados"
-            value={report ? `${report.completed + report.approved}/${report.total}` : '—'}
-            note={report ? `${report.completionRatePercent}% completado` : undefined}
+            label="Concluídos"
+            value={report ? `${report.completed + report.reviewed}/${report.total}` : '—'}
+            note={report ? `${report.completionRatePercent}% concluído` : undefined}
           />
-          <K label="Duración promedio" value={report ? formatDuration(report.averageDurationSeconds) : '—'} />
+          <K label="Duração média" value={report ? formatDuration(report.averageDurationSeconds) : '—'} />
           <K label="Vencidos" value={report ? String(report.overdue) : '—'} />
         </div>
       ) : null}
@@ -52,10 +52,10 @@ export default function DashboardPage() {
         {canSeeReports && (
           <section className="card">
             <h2 className="card-title">Checklists por área</h2>
-            <p className="card-sub">Totales acumulados en el período</p>
-            {byAreaQuery.isLoading && <p className="muted">Cargando…</p>}
+            <p className="card-sub">Totais acumulados no período</p>
+            {byAreaQuery.isLoading && <p className="muted">Carregando…</p>}
             {byArea.map((a) => {
-              const pct = a.total === 0 ? 0 : Math.round(((a.completed + a.approved) * 100) / a.total);
+              const pct = a.total === 0 ? 0 : Math.round(((a.completed + a.reviewed) * 100) / a.total);
               return (
                 <div className="bar-row" key={a.areaId}>
                   <span>{a.areaName}</span>
@@ -66,13 +66,13 @@ export default function DashboardPage() {
                 </div>
               );
             })}
-            {!byAreaQuery.isLoading && byArea.length === 0 && <div className="card empty">Sin datos aún.</div>}
+            {!byAreaQuery.isLoading && byArea.length === 0 && <div className="card empty">Ainda sem dados.</div>}
           </section>
         )}
         <section className="card">
-          <h2 className="card-title">Checklists de hoy</h2>
-          <p className="card-sub">{list.length} programados para hoy</p>
-          {todayInstances.isLoading && <p className="muted">Cargando…</p>}
+          <h2 className="card-title">Checklists de hoje</h2>
+          <p className="card-sub">{list.length} programados para hoje</p>
+          {todayInstances.isLoading && <p className="muted">Carregando…</p>}
           {list.slice(0, 8).map((x) => (
             <div className="activity" key={x.id}>
               <i className="activity-dot" />
@@ -87,7 +87,7 @@ export default function DashboardPage() {
             </div>
           ))}
           {!todayInstances.isLoading && list.length === 0 && (
-            <div className="card empty">No hay checklists programados para hoy.</div>
+            <div className="card empty">Nenhum checklist programado para hoje.</div>
           )}
         </section>
       </div>

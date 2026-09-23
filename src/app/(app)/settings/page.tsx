@@ -12,26 +12,26 @@ export default function SettingsPage() {
 
   return (
     <div className="page">
-      <h1 className="page-title">Configuración</h1>
-      <p className="page-subtitle">Información de tu cuenta y sesión.</p>
+      <h1 className="page-title">Configurações</h1>
+      <p className="page-subtitle">Informações da sua conta e sessão.</p>
 
       <div className="card" style={{ maxWidth: 480 }}>
         <h2 className="card-title">Perfil</h2>
         <div className="detail-meta" style={{ marginTop: 12 }}>
           <div>
-            <span className="kpi-label">Nombre</span>
+            <span className="kpi-label">Nome</span>
             <div>{user?.name}</div>
           </div>
           <div>
-            <span className="kpi-label">Correo</span>
+            <span className="kpi-label">E-mail</span>
             <div>{user?.email}</div>
           </div>
           <div>
-            <span className="kpi-label">Rol</span>
+            <span className="kpi-label">Perfil de acesso</span>
             <div>{user ? roleLabel(user.role) : ''}</div>
           </div>
           <div>
-            <span className="kpi-label">Sesión expira</span>
+            <span className="kpi-label">Sessão expira em</span>
             <div>{formatDateTime(expiresAtUtc)}</div>
           </div>
         </div>
@@ -43,7 +43,7 @@ export default function SettingsPage() {
             router.push('/login');
           }}
         >
-          Cerrar sesión
+          Sair
         </button>
       </div>
     </div>

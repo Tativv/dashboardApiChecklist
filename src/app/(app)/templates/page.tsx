@@ -372,7 +372,7 @@ export default function TemplatesPage() {
   }
 
   return (
-    <RequireRole roles={['Directoria', 'Supervisor', 'Gerencia']}>
+    <RequireRole roles={['Directoria', 'Gerencia']}>
     <div className="page">
       <div className="toolbar">
         <div>

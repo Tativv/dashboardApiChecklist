@@ -43,16 +43,16 @@ function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void
 
   return (
     <div className="panel" style={{ marginBottom: 20 }}>
-      <h2 className="card-title">{initial ? 'Editar usuario' : 'Crear usuario'}</h2>
+      <h2 className="card-title">{initial ? 'Editar usuário' : 'Criar usuário'}</h2>
       <ErrorBanner message={error} />
       <form onSubmit={onSubmit}>
         <div className="form-grid">
           <div className="field">
-            <label>Nombre</label>
+            <label>Nome</label>
             <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={200} />
           </div>
           <div className="field">
-            <label>Correo</label>
+            <label>E-mail</label>
             <input
               type="email"
               value={email}
@@ -63,12 +63,12 @@ function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void
           </div>
           {!initial && (
             <div className="field">
-              <label>Contraseña</label>
+              <label>Senha</label>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
             </div>
           )}
           <div className="field">
-            <label>Rol</label>
+            <label>Perfil</label>
             <select
               value={role}
               onChange={(e) => {
@@ -87,7 +87,7 @@ function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void
         </div>
         {role === 'Supervisor' && (
           <div className="field" style={{ marginTop: 12 }}>
-            <label>Áreas que cubre</label>
+            <label>Áreas que cobre</label>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               {(areas.data ?? []).map((a: AreaDto) => (
                 <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400 }}>
@@ -99,7 +99,7 @@ function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void
                   {a.name}
                 </label>
               ))}
-              {(areas.data ?? []).length === 0 && <span className="muted">No hay áreas configuradas.</span>}
+              {(areas.data ?? []).length === 0 && <span className="muted">Nenhuma área configurada.</span>}
             </div>
           </div>
         )}
@@ -108,7 +108,7 @@ function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void
             Cancelar
           </button>
           <button className="btn btn-primary" disabled={pending}>
-            {pending ? 'Guardando…' : 'Guardar'}
+            {pending ? 'Salvando…' : 'Salvar'}
           </button>
         </div>
       </form>
@@ -125,7 +125,7 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null);
 
   async function onDeactivate(user: UserDto) {
-    if (!window.confirm(`¿Desactivar a ${user.name}?`)) return;
+    if (!window.confirm(`Desativar ${user.name}?`)) return;
     setError(null);
     try {
       await deactivateUser.mutateAsync(user.id);
@@ -139,11 +139,11 @@ export default function UsersPage() {
       <div className="page">
         <div className="toolbar">
           <div>
-            <h1 className="page-title">Usuarios</h1>
-            <p className="page-subtitle">Administra el acceso del equipo al sistema.</p>
+            <h1 className="page-title">Usuários</h1>
+            <p className="page-subtitle">Gerencie o acesso da equipe ao sistema.</p>
           </div>
           <button className="btn btn-primary" onClick={() => setEditing('new')}>
-            + Crear usuario
+            + Criar usuário
           </button>
         </div>
 
@@ -154,11 +154,11 @@ export default function UsersPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Nombre</th>
-                <th>Correo</th>
-                <th>Rol</th>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Perfil</th>
                 <th>Áreas</th>
-                <th>Estado</th>
+                <th>Status</th>
                 <th></th>
               </tr>
             </thead>
@@ -175,19 +175,19 @@ export default function UsersPage() {
                   </td>
                   <td>
                     <span className={'status ' + (u.active ? 'approved' : 'overdue')}>
-                      {u.active ? 'Activo' : 'Inactivo'}
+                      {u.active ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
                   <td className="actions">
                     <button onClick={() => setEditing(u)}>Editar</button>
-                    {u.active && <button onClick={() => onDeactivate(u)}>Desactivar</button>}
+                    {u.active && <button onClick={() => onDeactivate(u)}>Desativar</button>}
                   </td>
                 </tr>
               ))}
               {users.isLoading && (
                 <tr>
                   <td colSpan={6} className="muted">
-                    Cargando…
+                    Carregando…
                   </td>
                 </tr>
               )}

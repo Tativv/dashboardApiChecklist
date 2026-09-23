@@ -14,8 +14,8 @@ export default function MyTasksPage() {
     <div className="page">
       <div className="toolbar">
         <div>
-          <h1 className="page-title">Mis tareas</h1>
-          <p className="page-subtitle">Las tareas que tienes asignadas para el día seleccionado.</p>
+          <h1 className="page-title">Minhas tarefas</h1>
+          <p className="page-subtitle">As tarefas designadas a você no dia selecionado.</p>
         </div>
         <input type="date" className="btn btn-secondary" value={date} onChange={(e) => setDate(e.target.value)} />
       </div>
@@ -24,10 +24,10 @@ export default function MyTasksPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Tarea</th>
-              <th>Checklist / Activo</th>
-              <th>Horario</th>
-              <th>Estado</th>
+              <th>Tarefa</th>
+              <th>Checklist / Ativo</th>
+              <th>Horário</th>
+              <th>Status</th>
               <th></th>
             </tr>
           </thead>
@@ -35,7 +35,7 @@ export default function MyTasksPage() {
             {tasksQuery.isLoading && (
               <tr>
                 <td colSpan={5} className="muted">
-                  Cargando…
+                  Carregando…
                 </td>
               </tr>
             )}
@@ -47,7 +47,7 @@ export default function MyTasksPage() {
                 <td>
                   {t.templateName} · {t.assetName}
                 </td>
-                <td className="muted">{t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Continua'}</td>
+                <td className="muted">{t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Contínua'}</td>
                 <td>
                   <TaskExecutionStatusBadge status={t.status} />
                 </td>
@@ -59,7 +59,7 @@ export default function MyTasksPage() {
             {!tasksQuery.isLoading && tasks.length === 0 && (
               <tr>
                 <td colSpan={5} className="muted">
-                  No tienes tareas asignadas para {formatDate(date)}.
+                  Você não tem tarefas designadas para {formatDate(date)}.
                 </td>
               </tr>
             )}

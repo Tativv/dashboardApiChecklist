@@ -21,25 +21,25 @@ export function toApiError(error: unknown): ApiError {
     const status = axiosError.response?.status ?? 0;
     const body = axiosError.response?.data;
     if (!axiosError.response) {
-      return new ApiError('No se pudo conectar con el servidor. Verifica tu conexión.', 0);
+      return new ApiError('Não foi possível conectar ao servidor. Verifique sua conexão.', 0);
     }
     if (body?.errors && typeof body.errors === 'object') {
       const fieldErrors: Record<string, string[]> = body.errors;
       const first = Object.values(fieldErrors)[0]?.[0];
-      return new ApiError(first ?? body.title ?? 'Datos inválidos.', status, 'Validation', fieldErrors);
+      return new ApiError(first ?? body.title ?? 'Dados inválidos.', status, 'Validation', fieldErrors);
     }
     if (body?.detail || body?.title) {
       return new ApiError(body.detail ?? body.title, status, body.errorType);
     }
     if (status === 403) {
-      return new ApiError('No tienes permisos para realizar esta acción.', 403, 'Forbidden');
+      return new ApiError('Você não tem permissão para realizar esta ação.', 403, 'Forbidden');
     }
     if (status === 401) {
-      return new ApiError('Tu sesión expiró. Inicia sesión nuevamente.', 401, 'Unauthorized');
+      return new ApiError('Sua sessão expirou. Faça login novamente.', 401, 'Unauthorized');
     }
-    return new ApiError('Ocurrió un error inesperado.', status);
+    return new ApiError('Ocorreu um erro inesperado.', status);
   }
-  return new ApiError('Ocurrió un error inesperado.', 0);
+  return new ApiError('Ocorreu um erro inesperado.', 0);
 }
 
 export function fieldError(err: unknown, pascalName: string): string | undefined {

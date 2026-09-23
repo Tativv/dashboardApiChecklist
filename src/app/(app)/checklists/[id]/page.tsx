@@ -54,7 +54,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   if (instanceQuery.isLoading) {
     return (
       <div className="page">
-        <p className="muted">Cargando…</p>
+        <p className="muted">Carregando…</p>
       </div>
     );
   }
@@ -62,8 +62,8 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   if (!instance) {
     return (
       <div className="page">
-        <ErrorBanner message="No se encontró el checklist." />
-        <Link href="/checklists">Volver a checklists</Link>
+        <ErrorBanner message="Checklist não encontrado." />
+        <Link href="/checklists">Voltar para checklists</Link>
       </div>
     );
   }
@@ -76,7 +76,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   }
 
   async function onDelete() {
-    if (!window.confirm(`¿Eliminar el checklist "${instance?.templateName}"? Esta acción no se puede deshacer.`)) return;
+    if (!window.confirm(`Excluir o checklist "${instance?.templateName}"? Esta ação não pode ser desfeita.`)) return;
     setError(null);
     try {
       await deleteInstanceMutation.mutateAsync(id);
@@ -127,7 +127,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
       <div className="toolbar">
         <div>
           <Link href="/checklists" className="muted" style={{ fontSize: 13 }}>
-            ← Volver a checklists
+            ← Voltar para checklists
           </Link>
           <h1 className="page-title" style={{ marginTop: 8 }}>
             {instance.templateName}
@@ -143,15 +143,15 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="card detail-meta">
         <div>
-          <span className="kpi-label">Inicio</span>
+          <span className="kpi-label">Início</span>
           <div>{formatDateTime(instance.startedAt)}</div>
         </div>
         <div>
-          <span className="kpi-label">Fin</span>
+          <span className="kpi-label">Fim</span>
           <div>{formatDateTime(instance.completedAt)}</div>
         </div>
         <div>
-          <span className="kpi-label">Duración</span>
+          <span className="kpi-label">Duração</span>
           <div>{formatDuration(instance.durationSeconds)}</div>
         </div>
         <div>
@@ -162,20 +162,20 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
 
       {instance.status === 'Pending' && (
         <p className="muted" style={{ fontSize: 13, marginTop: -4 }}>
-          Asigna un responsable a cada tarea para que este checklist quede aprobado y pueda iniciarse.
+          Designe um responsável para cada tarefa para que este checklist seja aprovado e possa ser iniciado.
         </p>
       )}
 
       <div className="toolbar" style={{ marginTop: 20 }}>
         <span className="muted" style={{ fontSize: 13 }}>
-          {instance.taskExecutions.filter((t) => t.status === 'Completed').length}/{instance.taskExecutions.length} tareas completadas
+          {instance.taskExecutions.filter((t) => t.status === 'Completed').length}/{instance.taskExecutions.length} tarefas concluídas
         </span>
         <div style={{ display: 'flex', gap: 10 }}>
           {instance.status === 'Approved' && (
             <button
               className="btn btn-primary"
               disabled={!canActOnAssignment || startMutation.isPending}
-              title={!canActOnAssignment ? 'Solo un colaborador con una tarea asignada acá o un supervisor pueden iniciar' : ''}
+              title={!canActOnAssignment ? 'Somente um colaborador com uma tarefa designada aqui ou um supervisor podem iniciar' : ''}
               onClick={() => runAction(() => startMutation.mutateAsync(id))}
             >
               Iniciar
@@ -187,9 +187,9 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
               disabled={!canActOnAssignment || !allTasksCompleted || finishMutation.isPending}
               title={
                 !allTasksCompleted
-                  ? 'Completa todas las tareas antes de finalizar'
+                  ? 'Conclua todas as tarefas antes de finalizar'
                   : !canActOnAssignment
-                    ? 'Solo un colaborador con una tarea asignada acá o un supervisor pueden finalizar'
+                    ? 'Somente um colaborador com uma tarefa designada aqui ou um supervisor podem finalizar'
                     : ''
               }
               onClick={() => runAction(() => finishMutation.mutateAsync(id))}
@@ -217,7 +217,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
           )}
           {canManageInstances && (
             <button className="btn btn-secondary" disabled={deleteInstanceMutation.isPending} onClick={onDelete}>
-              Eliminar
+              Excluir
             </button>
           )}
         </div>
@@ -228,12 +228,12 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
           <thead>
             <tr>
               <th></th>
-              <th>Tarea</th>
-              <th>Horario</th>
-              <th>Asignado a</th>
-              <th>Estado</th>
-              <th>Comentario</th>
-              <th>Evidencia</th>
+              <th>Tarefa</th>
+              <th>Horário</th>
+              <th>Designado a</th>
+              <th>Status</th>
+              <th>Comentário</th>
+              <th>Evidência</th>
             </tr>
           </thead>
           <tbody>
@@ -251,12 +251,12 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                     type="checkbox"
                     checked={t.status === 'Completed'}
                     disabled={instance.status !== 'InProgress' || !canCompleteTask(t) || completeTaskMutation.isPending}
-                    title={!canCompleteTask(t) ? 'Solo el colaborador asignado o un supervisor pueden completar esta tarea' : ''}
+                    title={!canCompleteTask(t) ? 'Somente o colaborador designado ou um supervisor podem concluir esta tarefa' : ''}
                     onChange={(e) => onToggleTask(t.id, e.target.checked)}
                   />
                 </td>
                 <td>{t.taskName}</td>
-                <td className="muted">{t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Continua'}</td>
+                <td className="muted">{t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Contínua'}</td>
                 <td>
                   {canManage &&
                   (instance.status === 'Pending' || instance.status === 'Approved' || instance.status === 'InProgress') ? (
@@ -266,7 +266,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                       disabled={assignTaskMutation.isPending}
                       onChange={(e) => onAssignTask(t.id, e.target.value)}
                     >
-                      <option value="">Sin asignar</option>
+                      <option value="">Não designado</option>
                       {collaborators.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
@@ -277,8 +277,8 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                     <span className="muted">
                       {t.assignedUserId
                         ? (collaboratorNameById.get(t.assignedUserId) ??
-                            (t.assignedUserId === user?.id ? 'Tú' : 'Asignada'))
-                        : 'Sin asignar'}
+                            (t.assignedUserId === user?.id ? 'Você' : 'Designada'))
+                        : 'Não designado'}
                     </span>
                   )}
                 </td>
@@ -293,7 +293,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                     ))}
                     {t.evidenceCount > (uploadedByTask[t.id]?.length ?? 0) && (
                       <span className="muted" style={{ fontSize: 11 }}>
-                        +{t.evidenceCount - (uploadedByTask[t.id]?.length ?? 0)} archivo(s) previos
+                        +{t.evidenceCount - (uploadedByTask[t.id]?.length ?? 0)} arquivo(s) anteriores
                       </span>
                     )}
                     <input

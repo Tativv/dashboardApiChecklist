@@ -8,7 +8,7 @@ export function RequireRole({ roles, children }: { roles: UserRole[]; children: 
   if (!user || !roles.includes(user.role)) {
     return (
       <div className="page">
-        <div className="card empty">No tienes permisos para ver esta sección.</div>
+        <div className="card empty">Você não tem permissão para ver esta seção.</div>
       </div>
     );
   }

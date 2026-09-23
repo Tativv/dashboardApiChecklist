@@ -7,23 +7,23 @@ import { UserRole } from '@/types/api';
 import { roleLabel } from '@/components/ui/status-badge';
 
 const nav: [string, string, string][] = [
-  ['/dashboard', '▦', 'Resumen'],
+  ['/dashboard', '▦', 'Resumo'],
   ['/checklists', '☑', 'Checklists'],
-  ['/my-tasks', '✓', 'Mis tareas'],
+  ['/my-tasks', '✓', 'Minhas tarefas'],
   ['/templates', '▤', 'Templates'],
   ['/areas', '⌖', 'Áreas'],
-  ['/assets', '▧', 'Activos'],
-  ['/reports', '◷', 'Reportes'],
-  ['/users', '◉', 'Usuarios'],
-  ['/settings', '⚙', 'Configuración']
+  ['/assets', '▧', 'Ativos'],
+  ['/reports', '◷', 'Relatórios'],
+  ['/users', '◉', 'Usuários'],
+  ['/settings', '⚙', 'Configurações']
 ];
 
 const access: Record<string, UserRole[]> = {
   '/users': ['Directoria'],
   '/settings': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia'],
-  '/templates': ['Directoria', 'Supervisor', 'Gerencia'],
-  '/areas': ['Directoria', 'Supervisor', 'Gerencia'],
-  '/assets': ['Directoria', 'Supervisor', 'Gerencia'],
+  '/templates': ['Directoria', 'Gerencia'],
+  '/areas': ['Directoria', 'Gerencia'],
+  '/assets': ['Directoria', 'Gerencia'],
   '/reports': ['Directoria', 'Supervisor', 'Gerencia'],
   '/dashboard': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia'],
   '/checklists': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia'],
@@ -66,7 +66,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         <div className="brand">
           <span className="brand-mark">✓</span>HotelOps
         </div>
-        <div className="nav-label">OPERACIONES</div>
+        <div className="nav-label">OPERAÇÕES</div>
         {nav
           .filter((n) => access[n[0]].includes(role))
           .map((n) => (
@@ -75,7 +75,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               {n[2]}
             </Link>
           ))}
-        <div className="nav-label">SESIÓN</div>
+        <div className="nav-label">SESSÃO</div>
         <button
           className="nav"
           onClick={() => {
@@ -84,7 +84,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           }}
         >
           <span className="nav-icon">⎋</span>
-          Cerrar sesión
+          Sair
         </button>
       </aside>
       <main className="main">
@@ -92,7 +92,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           <div className="top-actions">
             <button
               className="menu-toggle"
-              aria-label="Abrir menú"
+              aria-label="Abrir menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
             >

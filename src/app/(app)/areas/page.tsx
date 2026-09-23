@@ -36,11 +36,11 @@ function AreaForm({
 
   return (
     <div className="panel" style={{ marginBottom: 20 }}>
-      <h2 className="card-title">{initial ? 'Editar área' : 'Crear área'}</h2>
+      <h2 className="card-title">{initial ? 'Editar área' : 'Criar área'}</h2>
       <ErrorBanner message={error} />
       <form onSubmit={onSubmit}>
         <div className="field">
-          <label>Nombre</label>
+          <label>Nome</label>
           <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={200} />
         </div>
         <div className="form-actions">
@@ -48,7 +48,7 @@ function AreaForm({
             Cancelar
           </button>
           <button className="btn btn-primary" disabled={pending}>
-            {pending ? 'Guardando…' : 'Guardar'}
+            {pending ? 'Salvando…' : 'Salvar'}
           </button>
         </div>
       </form>
@@ -63,7 +63,7 @@ export default function AreasPage() {
   const [error, setError] = useState<string | null>(null);
 
   async function onDelete(area: AreaDto) {
-    if (!window.confirm(`¿Eliminar el área "${area.name}"?`)) return;
+    if (!window.confirm(`Excluir a área "${area.name}"?`)) return;
     setError(null);
     try {
       await deleteArea.mutateAsync(area.id);
@@ -73,15 +73,15 @@ export default function AreasPage() {
   }
 
   return (
-    <RequireRole roles={['Directoria', 'Supervisor', 'Gerencia']}>
+    <RequireRole roles={['Directoria', 'Gerencia']}>
     <div className="page">
       <div className="toolbar">
         <div>
           <h1 className="page-title">Áreas</h1>
-          <p className="page-subtitle">Configuración operacional del hotel.</p>
+          <p className="page-subtitle">Configuração operacional do hotel.</p>
         </div>
         <button className="btn btn-primary" onClick={() => setEditing('new')}>
-          + Crear área
+          + Criar área
         </button>
       </div>
 
@@ -94,7 +94,7 @@ export default function AreasPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Nombre</th>
+              <th>Nome</th>
               <th></th>
             </tr>
           </thead>
@@ -104,14 +104,14 @@ export default function AreasPage() {
                 <td>{a.name}</td>
                 <td className="actions">
                   <button onClick={() => setEditing(a)}>Editar</button>
-                  <button onClick={() => onDelete(a)}>Eliminar</button>
+                  <button onClick={() => onDelete(a)}>Excluir</button>
                 </td>
               </tr>
             ))}
             {areas.isLoading && (
               <tr>
                 <td colSpan={2} className="muted">
-                  Cargando…
+                  Carregando…
                 </td>
               </tr>
             )}

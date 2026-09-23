@@ -1,4 +1,5 @@
 import { ChecklistStatus, DayOfWeekName, ScheduleFrequencyType, TaskExecutionStatus } from '@/types/api';
+import { todayIso } from '@/lib/format';
 
 const statusClass: Record<ChecklistStatus, string> = {
   Pending: 'pending',
@@ -9,16 +10,16 @@ const statusClass: Record<ChecklistStatus, string> = {
 };
 
 const statusLabel: Record<ChecklistStatus, string> = {
-  Pending: 'Pendiente',
-  Approved: 'Aprobado',
-  InProgress: 'En progreso',
-  Completed: 'Finalizado',
+  Pending: 'Pendente',
+  Approved: 'Aprovado',
+  InProgress: 'Em andamento',
+  Completed: 'Concluído',
   Reviewed: 'Revisado'
 };
 
 export function isOverdue(status: ChecklistStatus, date: string): boolean {
   if (status !== 'Pending' && status !== 'Approved' && status !== 'InProgress') return false;
-  return date < new Date().toISOString().slice(0, 10);
+  return date < todayIso();
 }
 
 export function StatusBadge({ status, overdue }: { status: ChecklistStatus; overdue?: boolean }) {
@@ -30,10 +31,10 @@ export function StatusBadge({ status, overdue }: { status: ChecklistStatus; over
 
 export function roleLabel(role: string): string {
   const labels: Record<string, string> = {
-    Directoria: 'Directoría',
+    Directoria: 'Diretoria',
     Supervisor: 'Supervisor',
     Colaborador: 'Colaborador',
-    Gerencia: 'Gerencia'
+    Gerencia: 'Gerência'
   };
   return labels[role] ?? role;
 }

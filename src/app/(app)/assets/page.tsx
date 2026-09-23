@@ -22,7 +22,7 @@ function AssetForm({ initial, onClose }: { initial?: AssetDto; onClose: () => vo
     e.preventDefault();
     setError(null);
     if (!areaId) {
-      setError('Selecciona un área.');
+      setError('Selecione uma área.');
       return;
     }
     try {
@@ -39,23 +39,23 @@ function AssetForm({ initial, onClose }: { initial?: AssetDto; onClose: () => vo
 
   return (
     <div className="panel" style={{ marginBottom: 20 }}>
-      <h2 className="card-title">{initial ? 'Editar activo' : 'Crear activo'}</h2>
+      <h2 className="card-title">{initial ? 'Editar ativo' : 'Criar ativo'}</h2>
       <ErrorBanner message={error} />
       <form onSubmit={onSubmit}>
         <div className="form-grid">
           <div className="field">
-            <label>Nombre</label>
+            <label>Nome</label>
             <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={200} />
           </div>
           <div className="field">
             <label>Tipo</label>
-            <input value={type} onChange={(e) => setType(e.target.value)} required maxLength={100} placeholder="Habitación, Equipo, Zona común…" />
+            <input value={type} onChange={(e) => setType(e.target.value)} required maxLength={100} placeholder="Quarto, Equipamento, Área comum…" />
           </div>
           <div className="field">
             <label>Área</label>
             <select value={areaId} onChange={(e) => setAreaId(e.target.value)}>
               <option value="" disabled>
-                Selecciona un área
+                Selecione uma área
               </option>
               {(areas.data ?? []).map((a) => (
                 <option key={a.id} value={a.id}>
@@ -66,10 +66,10 @@ function AssetForm({ initial, onClose }: { initial?: AssetDto; onClose: () => vo
           </div>
           {initial && (
             <div className="field">
-              <label>Estado</label>
+              <label>Status</label>
               <select value={active ? 'true' : 'false'} onChange={(e) => setActive(e.target.value === 'true')}>
-                <option value="true">Activo</option>
-                <option value="false">Inactivo</option>
+                <option value="true">Ativo</option>
+                <option value="false">Inativo</option>
               </select>
             </div>
           )}
@@ -79,7 +79,7 @@ function AssetForm({ initial, onClose }: { initial?: AssetDto; onClose: () => vo
             Cancelar
           </button>
           <button className="btn btn-primary" disabled={pending}>
-            {pending ? 'Guardando…' : 'Guardar'}
+            {pending ? 'Salvando…' : 'Salvar'}
           </button>
         </div>
       </form>
@@ -98,7 +98,7 @@ export default function AssetsPage() {
   const areaName = (id: string) => areas.data?.find((a) => a.id === id)?.name ?? '—';
 
   async function onDelete(asset: AssetDto) {
-    if (!window.confirm(`¿Eliminar el activo "${asset.name}"?`)) return;
+    if (!window.confirm(`Excluir o ativo "${asset.name}"?`)) return;
     setError(null);
     try {
       await deleteAsset.mutateAsync(asset.id);
@@ -108,15 +108,15 @@ export default function AssetsPage() {
   }
 
   return (
-    <RequireRole roles={['Directoria', 'Supervisor', 'Gerencia']}>
+    <RequireRole roles={['Directoria', 'Gerencia']}>
     <div className="page">
       <div className="toolbar">
         <div>
-          <h1 className="page-title">Activos</h1>
-          <p className="page-subtitle">Configuración operacional del hotel.</p>
+          <h1 className="page-title">Ativos</h1>
+          <p className="page-subtitle">Configuração operacional do hotel.</p>
         </div>
         <button className="btn btn-primary" onClick={() => setEditing('new')}>
-          + Crear activo
+          + Criar ativo
         </button>
       </div>
 
@@ -125,7 +125,7 @@ export default function AssetsPage() {
 
       <div className="toolbar">
         <select className="btn btn-secondary" value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
-          <option value="">Todas las áreas</option>
+          <option value="">Todas as áreas</option>
           {(areas.data ?? []).map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -138,10 +138,10 @@ export default function AssetsPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Nombre</th>
+              <th>Nome</th>
               <th>Tipo</th>
               <th>Área</th>
-              <th>Estado</th>
+              <th>Status</th>
               <th></th>
             </tr>
           </thead>
@@ -153,19 +153,19 @@ export default function AssetsPage() {
                 <td>{areaName(a.areaId)}</td>
                 <td>
                   <span className={'status ' + (a.active ? 'approved' : 'overdue')}>
-                    {a.active ? 'Activo' : 'Inactivo'}
+                    {a.active ? 'Ativo' : 'Inativo'}
                   </span>
                 </td>
                 <td className="actions">
                   <button onClick={() => setEditing(a)}>Editar</button>
-                  <button onClick={() => onDelete(a)}>Eliminar</button>
+                  <button onClick={() => onDelete(a)}>Excluir</button>
                 </td>
               </tr>
             ))}
             {assets.isLoading && (
               <tr>
                 <td colSpan={5} className="muted">
-                  Cargando…
+                  Carregando…
                 </td>
               </tr>
             )}
