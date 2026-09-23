@@ -7,7 +7,6 @@ import { getInstance } from '@/features/checklist-instances/api';
 import { useUsers } from '@/features/users/hooks';
 import { RequireRole } from '@/components/ui/require-role';
 import { ErrorBanner } from '@/components/ui/error-banner';
-import { StatusBadge } from '@/components/ui/status-badge';
 import { toApiError } from '@/lib/api-error';
 import { todayIso } from '@/lib/format';
 import { buildByAreaReportPdf, buildByDateReportPdf, buildFullDailySummaryPdf, downloadPdf, getPdfPreviewUrl, GeneratedPdf } from '@/lib/pdf';
@@ -150,11 +149,11 @@ function DailySummaryPanel({ onPreview }: { onPreview: (pdf: GeneratedPdf) => vo
   const areas = useAreas();
   const users = useUsers({});
   const [areaId, setAreaId] = useState('');
+  const [date, setDate] = useState(todayIso());
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const date = todayIso();
 
-  const matches = useInstances({ areaId: areaId || undefined, fromDate: date, toDate: date });
+  const matches = useInstances({ areaId: areaId || undefined, fromDate: date, toDate: date }, !!date);
   const matchList = matches.data ?? [];
 
   async function onGenerate() {
@@ -183,7 +182,7 @@ function DailySummaryPanel({ onPreview }: { onPreview: (pdf: GeneratedPdf) => vo
             </option>
           ))}
         </select>
-        <span className="muted" style={{ fontSize: 13 }}>Data: hoje</span>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <button
           type="button"
           className="btn btn-primary"
@@ -199,26 +198,7 @@ function DailySummaryPanel({ onPreview }: { onPreview: (pdf: GeneratedPdf) => vo
         <p className="muted" style={{ marginTop: 10 }}>Nenhuma checklist encontrada para o filtro selecionado.</p>
       )}
       {!matches.isLoading && matchList.length > 0 && (
-        <div style={{ marginTop: 10, maxHeight: 220, overflowY: 'auto', border: '1px solid var(--line)', borderRadius: 8 }}>
-          {matchList.map((m) => (
-            <div
-              key={m.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 10,
-                padding: '8px 12px',
-                borderBottom: '1px solid var(--line)',
-                fontSize: 13
-              }}
-            >
-              <span>
-                {m.templateName} — {m.assetName}
-              </span>
-              <StatusBadge status={m.status} />
-            </div>
-          ))}
-        </div>
+        <p className="muted" style={{ marginTop: 10 }}>{matchList.length} checklist(s) encontrada(s) para o PDF.</p>
       )}
     </div>
   );
