@@ -4,6 +4,7 @@ import { ByAreaReportItemDto, ByDateReportItemDto, DashboardReportDto } from '@/
 export interface DateRange {
   fromDate?: string;
   toDate?: string;
+  today?: string;
 }
 
 export async function getDashboardReport(range: DateRange = {}): Promise<DashboardReportDto> {

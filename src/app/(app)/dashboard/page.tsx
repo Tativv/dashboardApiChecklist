@@ -21,7 +21,7 @@ export default function DashboardPage() {
   const canSeeReports = isSupervisorOrAbove(user?.role);
   const today = todayIso();
 
-  const dashboardQuery = useDashboardReport({}, canSeeReports);
+  const dashboardQuery = useDashboardReport({ today }, canSeeReports);
   const byAreaQuery = useByAreaReport({}, canSeeReports);
   const todayInstances = useInstances({ fromDate: today, toDate: today });
 
