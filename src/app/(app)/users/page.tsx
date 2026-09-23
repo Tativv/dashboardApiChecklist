@@ -69,14 +69,7 @@ function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void
           )}
           <div className="field">
             <label>Perfil</label>
-            <select
-              value={role}
-              onChange={(e) => {
-                const nextRole = e.target.value as UserRole;
-                setRole(nextRole);
-                if (nextRole !== 'Supervisor') setAreaIds([]);
-              }}
-            >
+            <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
               {roles.map((r) => (
                 <option key={r} value={r}>
                   {roleLabel(r)}
@@ -85,24 +78,22 @@ function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void
             </select>
           </div>
         </div>
-        {role === 'Supervisor' && (
-          <div className="field" style={{ marginTop: 12 }}>
-            <label>Áreas que cobre</label>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              {(areas.data ?? []).map((a: AreaDto) => (
-                <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400 }}>
-                  <input
-                    type="checkbox"
-                    checked={areaIds.includes(a.id)}
-                    onChange={() => toggleArea(a.id)}
-                  />
-                  {a.name}
-                </label>
-              ))}
-              {(areas.data ?? []).length === 0 && <span className="muted">Nenhuma área configurada.</span>}
-            </div>
+        <div className="field" style={{ marginTop: 12 }}>
+          <label>Áreas que cobre</label>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {(areas.data ?? []).map((a: AreaDto) => (
+              <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400 }}>
+                <input
+                  type="checkbox"
+                  checked={areaIds.includes(a.id)}
+                  onChange={() => toggleArea(a.id)}
+                />
+                {a.name}
+              </label>
+            ))}
+            {(areas.data ?? []).length === 0 && <span className="muted">Nenhuma área configurada.</span>}
           </div>
-        )}
+        </div>
         <div className="form-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>
             Cancelar
