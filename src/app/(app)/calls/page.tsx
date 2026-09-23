@@ -1,12 +1,13 @@
 'use client';
 import { useState } from 'react';
 import { useAuthStore, isSupervisorOrAbove } from '@/features/auth/store';
-import { useCalls, useCreateCall, useAssignCall, useStartCall, useFinishCall } from '@/features/calls/hooks';
+import { useCalls, useCall, useCreateCall, useAssignCall, useStartCall, useFinishCall } from '@/features/calls/hooks';
 import { useAreas } from '@/features/areas/hooks';
 import { useUsers } from '@/features/users/hooks';
 import { RequireRole } from '@/components/ui/require-role';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { toApiError } from '@/lib/api-error';
+import { formatDateTime, formatDuration } from '@/lib/format';
 import { CallListItemDto, CallPriority, CallStatus } from '@/types/api';
 
 const priorityLabel: Record<CallPriority, string> = { Baixa: 'Baixa', Media: 'Média', Alta: 'Alta' };
@@ -93,11 +94,91 @@ function CreateCallForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-function CallRow({ call, currentUserId, canManage, assignableUsers, onError }: {
+function DetailField({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 14, marginTop: 2 }}>{value}</div>
+    </div>
+  );
+}
+
+function CallDetailModal({ id, onClose }: { id: string; onClose: () => void }) {
+  const call = useCall(id);
+  const c = call.data;
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.6)',
+        zIndex: 100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="panel"
+        style={{ width: '100%', maxWidth: 560, maxHeight: '85vh', overflowY: 'auto', margin: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {call.isLoading && <p className="muted">Carregando…</p>}
+        {!call.isLoading && !c && <p className="muted">Chamado não encontrado.</p>}
+        {c && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+              <h2 className="card-title" style={{ marginBottom: 0 }}>
+                {c.subject}
+              </h2>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <span className={'status ' + priorityClass[c.priority]}>{priorityLabel[c.priority]}</span>
+                <span className={'status ' + statusClass[c.status]}>{statusLabel[c.status]}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 18 }}>
+              <DetailField label="Área" value={c.areaName} />
+              <DetailField label="Designado a" value={c.assignedUserName ?? 'Não designado'} />
+              <DetailField label="Aberto por" value={c.createdByUserName} />
+              <DetailField label="Aberto em" value={formatDateTime(c.createdAtUtc)} />
+              <DetailField label="Iniciado em" value={c.startedAt ? formatDateTime(c.startedAt) : '—'} />
+              <DetailField
+                label="Concluído em"
+                value={c.completedAt ? `${formatDateTime(c.completedAt)} (${formatDuration(c.durationSeconds)})` : '—'}
+              />
+            </div>
+
+            <div style={{ marginTop: 18 }}>
+              <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
+                Descrição
+              </div>
+              <p style={{ fontSize: 14, marginTop: 4, whiteSpace: 'pre-wrap' }}>{c.description || 'Sem descrição.'}</p>
+            </div>
+          </>
+        )}
+
+        <div className="form-actions">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CallRow({ call, currentUserId, canManage, assignableUsers, onView, onError }: {
   call: CallListItemDto;
   currentUserId: string;
   canManage: boolean;
   assignableUsers: { id: string; name: string }[];
+  onView: (id: string) => void;
   onError: (message: string) => void;
 }) {
   const assignCall = useAssignCall();
@@ -158,6 +239,7 @@ function CallRow({ call, currentUserId, canManage, assignableUsers, onError }: {
         )}
       </td>
       <td className="actions">
+        <button onClick={() => onView(call.id)}>Ver</button>
         {canOperate && call.status === 'Open' && call.assignedUserId && (
           <button disabled={pending} onClick={() => run(() => startCall.mutateAsync(call.id))}>
             Iniciar
@@ -183,6 +265,7 @@ export default function CallsPage() {
   const [priority, setPriority] = useState<CallPriority | 'Todas'>('Todas');
   const calls = useCalls({ areaId: areaId || undefined, status, priority });
   const [creating, setCreating] = useState(false);
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const assignableUsers = assignableUsersQuery.data ?? [];
@@ -250,6 +333,7 @@ export default function CallsPage() {
                   currentUserId={user?.id ?? ''}
                   canManage={canManage}
                   assignableUsers={assignableUsers}
+                  onView={setViewingId}
                   onError={setError}
                 />
               ))}
@@ -270,6 +354,8 @@ export default function CallsPage() {
             </tbody>
           </table>
         </div>
+
+        {viewingId && <CallDetailModal id={viewingId} onClose={() => setViewingId(null)} />}
       </div>
     </RequireRole>
   );
