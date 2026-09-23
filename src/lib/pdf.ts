@@ -124,7 +124,12 @@ function drawStatusPill(doc: jsPDF, x: number, y: number, rawStatus: string, lab
   return pillWidth;
 }
 
-function finalizeDocument(doc: jsPDF, filename: string) {
+export interface GeneratedPdf {
+  doc: jsPDF;
+  filename: string;
+}
+
+function drawFooters(doc: jsPDF) {
   const pageCount = doc.getNumberOfPages();
   const generatedAt = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -140,11 +145,17 @@ function finalizeDocument(doc: jsPDF, filename: string) {
     doc.text(`Página ${page} de ${pageCount}`, PAGE.width - MARGIN, PAGE.height - 28, { align: 'right' });
     doc.setTextColor(...COLOR.text);
   }
+}
 
+export function downloadPdf({ doc, filename }: GeneratedPdf) {
   doc.save(filename);
 }
 
-export function generateByDateReportPdf(rows: ByDateReportItemDto[], fromDate: string, toDate: string) {
+export function getPdfPreviewUrl(doc: jsPDF): string {
+  return doc.output('bloburl') as unknown as string;
+}
+
+export function buildByDateReportPdf(rows: ByDateReportItemDto[], fromDate: string, toDate: string): GeneratedPdf {
   const ctx = createDocument('Relatório por Data', `Período: ${formatDate(fromDate)} a ${formatDate(toDate)}`);
 
   autoTable(ctx.doc, {
@@ -168,10 +179,11 @@ export function generateByDateReportPdf(rows: ByDateReportItemDto[], fromDate: s
     columnStyles: { 0: { fontStyle: 'bold' } }
   });
 
-  finalizeDocument(ctx.doc, `relatorio-por-data_${fromDate}_a_${toDate}.pdf`);
+  drawFooters(ctx.doc);
+  return { doc: ctx.doc, filename: `relatorio-por-data_${fromDate}_a_${toDate}.pdf` };
 }
 
-export function generateByAreaReportPdf(rows: ByAreaReportItemDto[], fromDate: string, toDate: string) {
+export function buildByAreaReportPdf(rows: ByAreaReportItemDto[], fromDate: string, toDate: string): GeneratedPdf {
   const ctx = createDocument('Relatório por Área', `Período: ${formatDate(fromDate)} a ${formatDate(toDate)}`);
 
   autoTable(ctx.doc, {
@@ -186,7 +198,8 @@ export function generateByAreaReportPdf(rows: ByAreaReportItemDto[], fromDate: s
     columnStyles: { 0: { fontStyle: 'bold' } }
   });
 
-  finalizeDocument(ctx.doc, `relatorio-por-area_${fromDate}_a_${toDate}.pdf`);
+  drawFooters(ctx.doc);
+  return { doc: ctx.doc, filename: `relatorio-por-area_${fromDate}_a_${toDate}.pdf` };
 }
 
 function drawOverviewTable(ctx: DocContext, items: ChecklistInstanceListItemDto[], areaName: (id: string) => string) {
@@ -267,14 +280,14 @@ function drawInstanceSection(ctx: DocContext, title: string, status: string, det
   ctx.cursorY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 20;
 }
 
-export function generateFullDailySummaryPdf(
+export function buildFullDailySummaryPdf(
   items: ChecklistInstanceListItemDto[],
   details: Map<string, ChecklistInstanceDetailDto>,
   areas: AreaDto[],
   users: UserDto[],
   date: string,
   areaFilterLabel?: string
-) {
+): GeneratedPdf {
   const areaName = (id: string) => areas.find((a) => a.id === id)?.name ?? '—';
 
   const byArea = new Map<string, Map<string, ChecklistInstanceListItemDto[]>>();
@@ -319,8 +332,9 @@ export function generateFullDailySummaryPdf(
     }
   }
 
-  finalizeDocument(
-    ctx.doc,
-    `resumo-diario-completo_${date}${areaFilterLabel ? '_' + areaFilterLabel.replace(/\s+/g, '-') : ''}.pdf`
-  );
+  drawFooters(ctx.doc);
+  return {
+    doc: ctx.doc,
+    filename: `resumo-diario-completo_${date}${areaFilterLabel ? '_' + areaFilterLabel.replace(/\s+/g, '-') : ''}.pdf`
+  };
 }
