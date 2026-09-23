@@ -22,7 +22,7 @@ export default function DashboardPage() {
   const today = todayIso();
 
   const dashboardQuery = useDashboardReport({ today }, canSeeReports);
-  const byAreaQuery = useByAreaReport({}, canSeeReports);
+  const byAreaQuery = useByAreaReport({ fromDate: today, toDate: today }, canSeeReports);
   const todayInstances = useInstances({ fromDate: today, toDate: today });
 
   const report = dashboardQuery.data;
@@ -52,7 +52,7 @@ export default function DashboardPage() {
         {canSeeReports && (
           <section className="card">
             <h2 className="card-title">Checklists por área</h2>
-            <p className="card-sub">Totais acumulados no período</p>
+            <p className="card-sub">Totais de hoje</p>
             {byAreaQuery.isLoading && <p className="muted">Carregando…</p>}
             {byArea.map((a) => {
               const pct = a.total === 0 ? 0 : Math.round(((a.completed + a.reviewed) * 100) / a.total);
@@ -73,19 +73,23 @@ export default function DashboardPage() {
           <h2 className="card-title">Checklists de hoje</h2>
           <p className="card-sub">{list.length} programados para hoje</p>
           {todayInstances.isLoading && <p className="muted">Carregando…</p>}
-          {list.slice(0, 8).map((x) => (
-            <div className="activity" key={x.id}>
-              <i className="activity-dot" />
-              <div style={{ flex: 1 }}>
-                <p>
-                  <Link href={`/checklists/${x.id}`}>{x.templateName}</Link> · {x.assetName}
-                </p>
-                <small>
-                  <StatusBadge status={x.status} overdue={isOverdue(x.status, x.date)} />
-                </small>
-              </div>
+          {list.length > 0 && (
+            <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+              {list.map((x) => (
+                <div className="activity" key={x.id}>
+                  <i className="activity-dot" />
+                  <div style={{ flex: 1 }}>
+                    <p>
+                      <Link href={`/checklists/${x.id}`}>{x.templateName}</Link> · {x.assetName}
+                    </p>
+                    <small>
+                      <StatusBadge status={x.status} overdue={isOverdue(x.status, x.date)} />
+                    </small>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
           {!todayInstances.isLoading && list.length === 0 && (
             <div className="card empty">Nenhum checklist programado para hoje.</div>
           )}
