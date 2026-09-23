@@ -8,7 +8,7 @@ import { useUsers } from '@/features/users/hooks';
 import { RequireRole } from '@/components/ui/require-role';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { toApiError } from '@/lib/api-error';
-import { daysAgoIso, todayIso } from '@/lib/format';
+import { todayIso } from '@/lib/format';
 import { generateByAreaReportPdf, generateByDateReportPdf, generateFullDailySummaryPdf } from '@/lib/pdf';
 import { ChecklistInstanceDetailDto } from '@/types/api';
 
@@ -25,7 +25,7 @@ const reportCards: { key: ReportKey; title: string; description: string }[] = [
 ];
 
 function ByDatePanel() {
-  const [fromDate, setFromDate] = useState(daysAgoIso(30));
+  const [fromDate, setFromDate] = useState(todayIso());
   const [toDate, setToDate] = useState(todayIso());
   const byDate = useByDateReport({ fromDate, toDate });
   const rows = byDate.data ?? [];
@@ -53,7 +53,7 @@ function ByDatePanel() {
 }
 
 function ByAreaPanel() {
-  const [fromDate, setFromDate] = useState(daysAgoIso(30));
+  const [fromDate, setFromDate] = useState(todayIso());
   const [toDate, setToDate] = useState(todayIso());
   const byArea = useByAreaReport({ fromDate, toDate });
   const rows = byArea.data ?? [];
