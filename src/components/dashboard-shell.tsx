@@ -10,6 +10,7 @@ const nav: [string, string, string][] = [
   ['/dashboard', '▦', 'Resumo'],
   ['/checklists', '☑', 'Checklists'],
   ['/my-tasks', '✓', 'Minhas tarefas'],
+  ['/calls', '☎', 'Chamados'],
   ['/templates', '▤', 'Templates'],
   ['/areas', '⌖', 'Áreas'],
   ['/assets', '▧', 'Ativos'],
@@ -27,7 +28,8 @@ const access: Record<string, UserRole[]> = {
   '/reports': ['Directoria', 'Supervisor', 'Gerencia'],
   '/dashboard': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia'],
   '/checklists': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia'],
-  '/my-tasks': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia']
+  '/my-tasks': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia'],
+  '/calls': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia']
 };
 
 function initials(name: string): string {

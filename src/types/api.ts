@@ -179,6 +179,43 @@ export interface ByAreaReportItemDto {
   averageDurationSeconds?: number | null;
 }
 
+export type CallPriority = 'Baixa' | 'Media' | 'Alta';
+export type CallStatus = 'Open' | 'InProgress' | 'Finished';
+
+export interface CallDto {
+  id: string;
+  areaId: string;
+  areaName: string;
+  subject: string;
+  description?: string | null;
+  priority: CallPriority;
+  status: CallStatus;
+  createdByUserId: string;
+  createdByUserName: string;
+  assignedUserId?: string | null;
+  assignedUserName?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  durationSeconds?: number | null;
+  createdAtUtc: string;
+}
+
+export interface CallListItemDto {
+  id: string;
+  areaId: string;
+  areaName: string;
+  subject: string;
+  priority: CallPriority;
+  status: CallStatus;
+  createdByUserId: string;
+  createdByUserName: string;
+  assignedUserId?: string | null;
+  assignedUserName?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  createdAtUtc: string;
+}
+
 export interface LoginResponse {
   token: string;
   expiresAtUtc: string;
