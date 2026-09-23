@@ -69,11 +69,10 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   }
 
   const hasAssignedTaskHere = instance.taskExecutions.some((t) => t.assignedUserId === user?.id);
-  const canActOnAssignment = canManageInstances || hasAssignedTaskHere;
-  const allTasksAssigned = instance.taskExecutions.every((t) => !!t.assignedUserId);
+  const canActOnAssignment = canManage || hasAssignedTaskHere;
 
   function canCompleteTask(t: ChecklistTaskExecutionDto): boolean {
-    return canManageInstances || t.assignedUserId === user?.id;
+    return canManage || t.assignedUserId === user?.id;
   }
 
   async function onDelete() {
@@ -156,27 +155,27 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
           <div>{formatDuration(instance.durationSeconds)}</div>
         </div>
         <div>
-          <span className="kpi-label">Aprobado</span>
+          <span className="kpi-label">Revisado</span>
           <div>{formatDateTime(instance.taskExecutions.find((t) => t.approvedAt)?.approvedAt)}</div>
         </div>
       </div>
+
+      {instance.status === 'Pending' && (
+        <p className="muted" style={{ fontSize: 13, marginTop: -4 }}>
+          Asigna un responsable a cada tarea para que este checklist quede aprobado y pueda iniciarse.
+        </p>
+      )}
 
       <div className="toolbar" style={{ marginTop: 20 }}>
         <span className="muted" style={{ fontSize: 13 }}>
           {instance.taskExecutions.filter((t) => t.status === 'Completed').length}/{instance.taskExecutions.length} tareas completadas
         </span>
         <div style={{ display: 'flex', gap: 10 }}>
-          {instance.status === 'Pending' && (
+          {instance.status === 'Approved' && (
             <button
               className="btn btn-primary"
-              disabled={!allTasksAssigned || !canActOnAssignment || startMutation.isPending}
-              title={
-                !allTasksAssigned
-                  ? 'Todas las tareas deben tener un responsable asignado antes de iniciar'
-                  : !canActOnAssignment
-                    ? 'Solo un colaborador con una tarea asignada acá o gerencia/dirección pueden iniciar'
-                    : ''
-              }
+              disabled={!canActOnAssignment || startMutation.isPending}
+              title={!canActOnAssignment ? 'Solo un colaborador con una tarea asignada acá o un supervisor pueden iniciar' : ''}
               onClick={() => runAction(() => startMutation.mutateAsync(id))}
             >
               Iniciar
@@ -190,7 +189,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                 !allTasksCompleted
                   ? 'Completa todas las tareas antes de finalizar'
                   : !canActOnAssignment
-                    ? 'Solo un colaborador con una tarea asignada acá o gerencia/dirección pueden finalizar'
+                    ? 'Solo un colaborador con una tarea asignada acá o un supervisor pueden finalizar'
                     : ''
               }
               onClick={() => runAction(() => finishMutation.mutateAsync(id))}
@@ -204,10 +203,10 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
               disabled={approveMutation.isPending}
               onClick={() => runAction(() => approveMutation.mutateAsync(id))}
             >
-              Aprobar
+              Revisar
             </button>
           )}
-          {(instance.status === 'Completed' || instance.status === 'Approved') && canManageInstances && (
+          {(instance.status === 'Completed' || instance.status === 'Reviewed') && canManage && (
             <button
               className="btn btn-secondary"
               disabled={reopenMutation.isPending}
@@ -252,14 +251,15 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                     type="checkbox"
                     checked={t.status === 'Completed'}
                     disabled={instance.status !== 'InProgress' || !canCompleteTask(t) || completeTaskMutation.isPending}
-                    title={!canCompleteTask(t) ? 'Solo el colaborador asignado o gerencia/dirección pueden completar esta tarea' : ''}
+                    title={!canCompleteTask(t) ? 'Solo el colaborador asignado o un supervisor pueden completar esta tarea' : ''}
                     onChange={(e) => onToggleTask(t.id, e.target.checked)}
                   />
                 </td>
                 <td>{t.taskName}</td>
                 <td className="muted">{t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Continua'}</td>
                 <td>
-                  {canManage && (instance.status === 'Pending' || instance.status === 'InProgress') ? (
+                  {canManage &&
+                  (instance.status === 'Pending' || instance.status === 'Approved' || instance.status === 'InProgress') ? (
                     <select
                       className="btn btn-secondary btn-sm"
                       value={t.assignedUserId ?? ''}

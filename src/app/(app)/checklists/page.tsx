@@ -13,13 +13,14 @@ import { toApiError } from '@/lib/api-error';
 import { formatDate, formatDuration, todayIso } from '@/lib/format';
 import { ChecklistStatus } from '@/types/api';
 
-const statusOptions: (ChecklistStatus | 'Todos')[] = ['Todos', 'Pending', 'InProgress', 'Completed', 'Approved'];
+const statusOptions: (ChecklistStatus | 'Todos')[] = ['Todos', 'Pending', 'Approved', 'InProgress', 'Completed', 'Reviewed'];
 const statusLabels: Record<string, string> = {
   Todos: 'Todos',
   Pending: 'Pendiente',
+  Approved: 'Aprobado',
   InProgress: 'En progreso',
   Completed: 'Finalizado',
-  Approved: 'Aprobado'
+  Reviewed: 'Revisado'
 };
 
 interface CreateForm {

@@ -10,6 +10,7 @@ import {
 } from '@/features/templates/hooks';
 import { useAreas } from '@/features/areas/hooks';
 import { useAssets } from '@/features/assets/hooks';
+import { useAuthStore, isManagerOrAbove } from '@/features/auth/store';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { RequireRole } from '@/components/ui/require-role';
 import { ScheduleEditor, emptySchedule } from '@/components/ui/schedule-editor';
@@ -349,6 +350,8 @@ function ConfigureAssetsPanel({ templateId, onClose }: { templateId: string; onC
 }
 
 export default function TemplatesPage() {
+  const user = useAuthStore((s) => s.user);
+  const canManageTemplates = isManagerOrAbove(user?.role);
   const areas = useAreas();
   const templates = useTemplates();
   const deleteTemplate = useDeleteTemplate();
@@ -376,14 +379,20 @@ export default function TemplatesPage() {
           <h1 className="page-title">Templates</h1>
           <p className="page-subtitle">Configuração operacional do hotel.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setEditing('new')}>
-          + Criar template
-        </button>
+        {canManageTemplates && (
+          <button className="btn btn-primary" onClick={() => setEditing('new')}>
+            + Criar template
+          </button>
+        )}
       </div>
 
       <ErrorBanner message={error} />
-      {editing && <TemplateForm templateId={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}
-      {configuringId && <ConfigureAssetsPanel templateId={configuringId} onClose={() => setConfiguringId(null)} />}
+      {canManageTemplates && editing && (
+        <TemplateForm templateId={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />
+      )}
+      {canManageTemplates && configuringId && (
+        <ConfigureAssetsPanel templateId={configuringId} onClose={() => setConfiguringId(null)} />
+      )}
 
       <div className="table-wrap">
         <table className="table">

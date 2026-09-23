@@ -1,5 +1,5 @@
 export type UserRole = 'Directoria' | 'Supervisor' | 'Colaborador' | 'Gerencia';
-export type ChecklistStatus = 'Pending' | 'InProgress' | 'Completed' | 'Approved';
+export type ChecklistStatus = 'Pending' | 'Approved' | 'InProgress' | 'Completed' | 'Reviewed';
 export type DayOfWeekName = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 export type ScheduleFrequencyType = 'Daily' | 'Weekly' | 'Monthly';
 export type TaskExecutionMode = 'Scheduled' | 'Continuous';

@@ -2,20 +2,22 @@ import { ChecklistStatus, DayOfWeekName, ScheduleFrequencyType, TaskExecutionSta
 
 const statusClass: Record<ChecklistStatus, string> = {
   Pending: 'pending',
+  Approved: 'ready',
   InProgress: 'progress',
   Completed: 'done',
-  Approved: 'approved'
+  Reviewed: 'approved'
 };
 
 const statusLabel: Record<ChecklistStatus, string> = {
   Pending: 'Pendiente',
+  Approved: 'Aprobado',
   InProgress: 'En progreso',
   Completed: 'Finalizado',
-  Approved: 'Aprobado'
+  Reviewed: 'Revisado'
 };
 
 export function isOverdue(status: ChecklistStatus, date: string): boolean {
-  if (status !== 'Pending' && status !== 'InProgress') return false;
+  if (status !== 'Pending' && status !== 'Approved' && status !== 'InProgress') return false;
   return date < new Date().toISOString().slice(0, 10);
 }
 
