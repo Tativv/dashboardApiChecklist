@@ -1,11 +1,12 @@
 import { http } from '@/lib/http';
-import { ChecklistTaskInput, ChecklistTemplateDto, ChecklistTemplateListItemDto, ScheduleInput } from '@/types/api';
+import { ChecklistTaskInput, ChecklistTemplateDto, ChecklistTemplateListItemDto, ScheduleInput, TaskExecutionMode } from '@/types/api';
 
 export interface TemplateInput {
   name: string;
   description?: string | null;
   areaId: string;
   estimatedDurationMinutes: number;
+  executionMode: TaskExecutionMode;
   schedules: ScheduleInput[];
   tasks: ChecklistTaskInput[];
 }

@@ -22,6 +22,7 @@ interface FormState {
   description: string;
   areaId: string;
   estimatedDurationMinutes: number;
+  executionMode: TaskExecutionMode;
   schedules: ScheduleInput[];
   tasks: ChecklistTaskInput[];
 }
@@ -43,6 +44,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
           description: existing.data.description ?? '',
           areaId: existing.data.areaId,
           estimatedDurationMinutes: existing.data.estimatedDurationMinutes,
+          executionMode: existing.data.executionMode,
           schedules: existing.data.schedules.map((s) => ({ ...s })),
           tasks: existing.data.tasks.map((t) => ({
             name: t.name,
@@ -57,6 +59,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
           description: '',
           areaId: '',
           estimatedDurationMinutes: 15,
+          executionMode: 'Scheduled',
           schedules: [emptySchedule(0)],
           tasks: []
         }
@@ -129,6 +132,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
       description: form.description || null,
       areaId: form.areaId,
       estimatedDurationMinutes: Number(form.estimatedDurationMinutes),
+      executionMode: form.executionMode,
       schedules: form.schedules,
       tasks: form.tasks.map((t) => ({ ...t, description: t.description || null }))
     };
@@ -196,7 +200,31 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
           <p className="muted" style={{ fontSize: 12, margin: '2px 0 0' }}>
             Cada linha é uma regra independente — para "Segunda, Quarta e Sexta às 08:00" adicione 3 horários semanais.
           </p>
-          <ScheduleEditor schedules={form.schedules} onChange={(schedules) => setForm((f) => ({ ...f, schedules }))} />
+          <div style={{ display: 'flex', gap: 18, marginTop: 8 }}>
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
+              <input
+                type="radio"
+                name="templateExecMode"
+                checked={form.executionMode === 'Scheduled'}
+                onChange={() => setForm((f) => ({ ...f, executionMode: 'Scheduled' }))}
+              />
+              Agendado (hora fixa)
+            </label>
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
+              <input
+                type="radio"
+                name="templateExecMode"
+                checked={form.executionMode === 'Continuous'}
+                onChange={() => setForm((f) => ({ ...f, executionMode: 'Continuous' }))}
+              />
+              Contínuo (durante todo o turno, sem hora fixa)
+            </label>
+          </div>
+          <ScheduleEditor
+            schedules={form.schedules}
+            onChange={(schedules) => setForm((f) => ({ ...f, schedules }))}
+            showTime={form.executionMode === 'Scheduled'}
+          />
         </div>
 
         <div style={{ marginTop: 20 }}>

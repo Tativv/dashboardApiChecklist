@@ -64,6 +64,7 @@ export interface ChecklistTemplateDto {
   description?: string | null;
   areaId: string;
   estimatedDurationMinutes: number;
+  executionMode: TaskExecutionMode;
   schedules: ScheduleDto[];
   tasks: ChecklistTaskDto[];
   assetIds: string[];
