@@ -24,13 +24,11 @@ export function emptySchedule(executionOrder: number): ScheduleInput {
 export function ScheduleEditor({
   schedules,
   onChange,
-  addLabel = '+ Adicionar horário',
-  showTime = true
+  addLabel = '+ Adicionar horário'
 }: {
   schedules: ScheduleInput[];
   onChange: (schedules: ScheduleInput[]) => void;
   addLabel?: string;
-  showTime?: boolean;
 }) {
   function updateAt(index: number, patch: Partial<ScheduleInput>) {
     onChange(schedules.map((s, i) => (i === index ? { ...s, ...patch } : s)));
@@ -97,9 +95,7 @@ export function ScheduleEditor({
             />
           )}
 
-          {showTime && (
-            <input type="time" value={s.timeOfDay} onChange={(e) => updateAt(i, { timeOfDay: e.target.value })} />
-          )}
+          <input type="time" value={s.timeOfDay} onChange={(e) => updateAt(i, { timeOfDay: e.target.value })} />
 
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => remove(i)}>
             Remover

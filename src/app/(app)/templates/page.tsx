@@ -107,17 +107,19 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
       setError('Selecione o setor.');
       return;
     }
-    if (form.schedules.length === 0) {
-      setError('Adicione pelo menos um horário de execução.');
-      return;
-    }
-    if (form.schedules.some((s) => s.frequencyType === 'Weekly' && !s.weekDay)) {
-      setError('Selecione o dia da semana em todos os horários semanais.');
-      return;
-    }
-    if (form.schedules.some((s) => s.frequencyType === 'Monthly' && !s.dayOfMonth)) {
-      setError('Informe o dia do mês em todos os horários mensais.');
-      return;
+    if (form.executionMode === 'Scheduled') {
+      if (form.schedules.length === 0) {
+        setError('Adicione pelo menos um horário de execução.');
+        return;
+      }
+      if (form.schedules.some((s) => s.frequencyType === 'Weekly' && !s.weekDay)) {
+        setError('Selecione o dia da semana em todos os horários semanais.');
+        return;
+      }
+      if (form.schedules.some((s) => s.frequencyType === 'Monthly' && !s.dayOfMonth)) {
+        setError('Informe o dia do mês em todos os horários mensais.');
+        return;
+      }
     }
     if (form.tasks.length === 0 || form.tasks.some((t) => !t.name.trim())) {
       setError('Adicione pelo menos uma tarefa e preencha o nome.');
@@ -133,7 +135,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
       areaId: form.areaId,
       estimatedDurationMinutes: Number(form.estimatedDurationMinutes),
       executionMode: form.executionMode,
-      schedules: form.schedules,
+      schedules: form.executionMode === 'Scheduled' ? form.schedules : [],
       tasks: form.tasks.map((t) => ({ ...t, description: t.description || null }))
     };
     try {
@@ -206,7 +208,13 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
                 type="radio"
                 name="templateExecMode"
                 checked={form.executionMode === 'Scheduled'}
-                onChange={() => setForm((f) => ({ ...f, executionMode: 'Scheduled' }))}
+                onChange={() =>
+                  setForm((f) => ({
+                    ...f,
+                    executionMode: 'Scheduled',
+                    schedules: f.schedules.length > 0 ? f.schedules : [emptySchedule(0)]
+                  }))
+                }
               />
               Agendado (hora fixa)
             </label>
@@ -215,16 +223,14 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
                 type="radio"
                 name="templateExecMode"
                 checked={form.executionMode === 'Continuous'}
-                onChange={() => setForm((f) => ({ ...f, executionMode: 'Continuous' }))}
+                onChange={() => setForm((f) => ({ ...f, executionMode: 'Continuous', schedules: [] }))}
               />
               Contínuo (durante todo o turno, sem hora fixa)
             </label>
           </div>
-          <ScheduleEditor
-            schedules={form.schedules}
-            onChange={(schedules) => setForm((f) => ({ ...f, schedules }))}
-            showTime={form.executionMode === 'Scheduled'}
-          />
+          {form.executionMode === 'Scheduled' && (
+            <ScheduleEditor schedules={form.schedules} onChange={(schedules) => setForm((f) => ({ ...f, schedules }))} />
+          )}
         </div>
 
         <div style={{ marginTop: 20 }}>
