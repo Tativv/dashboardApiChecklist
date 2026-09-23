@@ -18,6 +18,10 @@ export interface ConfigureAssetsResult {
   assetCount: number;
 }
 
+export interface UpdateTemplateResult extends ChecklistTemplateDto {
+  versionedAsNewTemplate: boolean;
+}
+
 export async function listTemplates(areaId?: string): Promise<ChecklistTemplateListItemDto[]> {
   const { data } = await http.get<ChecklistTemplateListItemDto[]>('/checklist-templates/', {
     params: areaId ? { areaId } : {}
@@ -35,8 +39,8 @@ export async function createTemplate(input: TemplateInput): Promise<ChecklistTem
   return data;
 }
 
-export async function updateTemplate(id: string, input: TemplateInput): Promise<ChecklistTemplateDto> {
-  const { data } = await http.put<ChecklistTemplateDto>(`/checklist-templates/${id}`, input);
+export async function updateTemplate(id: string, input: TemplateInput): Promise<UpdateTemplateResult> {
+  const { data } = await http.put<UpdateTemplateResult>(`/checklist-templates/${id}`, input);
   return data;
 }
 

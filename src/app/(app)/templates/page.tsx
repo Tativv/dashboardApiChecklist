@@ -30,7 +30,7 @@ function emptyTask(order: number): ChecklistTaskInput {
   return { name: '', description: '', order, executionMode: 'Scheduled', schedules: [emptySchedule(0)] };
 }
 
-function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: () => void }) {
+function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (message?: string) => void }) {
   const areas = useAreas();
   const existing = useTemplate(templateId);
   const createTemplate = useCreateTemplate();
@@ -134,11 +134,16 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
     };
     try {
       if (templateId) {
-        await updateTemplate.mutateAsync({ id: templateId, input });
+        const result = await updateTemplate.mutateAsync({ id: templateId, input });
+        onClose(
+          result.versionedAsNewTemplate
+            ? 'Como este template já tem checklists gerados, foi criada uma nova versão. O histórico existente não é afetado.'
+            : undefined
+        );
       } else {
         await createTemplate.mutateAsync(input);
+        onClose();
       }
-      onClose();
     } catch (err) {
       setError(toApiError(err).message);
     }
@@ -263,7 +268,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
         </div>
 
         <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
+          <button type="button" className="btn btn-secondary" onClick={() => onClose()}>
             Cancelar
           </button>
           <button className="btn btn-primary" disabled={pending}>
@@ -358,12 +363,14 @@ export default function TemplatesPage() {
   const [editing, setEditing] = useState<string | 'new' | null>(null);
   const [configuringId, setConfiguringId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   const areaName = (id: string) => areas.data?.find((a) => a.id === id)?.name ?? '—';
 
   async function onDelete(t: ChecklistTemplateListItemDto) {
     if (!window.confirm(`Excluir o template "${t.name}"?`)) return;
     setError(null);
+    setInfoMessage(null);
     try {
       await deleteTemplate.mutateAsync(t.id);
     } catch (err) {
@@ -387,8 +394,15 @@ export default function TemplatesPage() {
       </div>
 
       <ErrorBanner message={error} />
+      <ErrorBanner message={infoMessage} variant="success" />
       {canManageTemplates && editing && (
-        <TemplateForm templateId={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />
+        <TemplateForm
+          templateId={editing === 'new' ? undefined : editing}
+          onClose={(message) => {
+            setEditing(null);
+            setInfoMessage(message ?? null);
+          }}
+        />
       )}
       {canManageTemplates && configuringId && (
         <ConfigureAssetsPanel templateId={configuringId} onClose={() => setConfiguringId(null)} />
