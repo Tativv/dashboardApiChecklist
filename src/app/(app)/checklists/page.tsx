@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
-import { useAuthStore, isManagerOrAbove, isExactlySupervisor } from '@/features/auth/store';
+import { useAuthStore, isSupervisorOrAbove, isExactlySupervisor } from '@/features/auth/store';
 import { useInstances, useCreateInstance, useGenerateScheduled, useDeleteInstance } from '@/features/checklist-instances/hooks';
 import { useTemplates } from '@/features/templates/hooks';
 import { useAssets } from '@/features/assets/hooks';
@@ -105,7 +105,7 @@ function CreateInstancePanel({ onClose }: { onClose: () => void }) {
 
 export default function ChecklistsPage() {
   const user = useAuthStore((s) => s.user);
-  const canManageInstances = isManagerOrAbove(user?.role);
+  const canManageInstances = isSupervisorOrAbove(user?.role);
   const isSupervisor = isExactlySupervisor(user?.role);
   const areas = useAreas();
   const [creating, setCreating] = useState(false);

@@ -10,7 +10,7 @@ import {
 } from '@/features/templates/hooks';
 import { useAreas } from '@/features/areas/hooks';
 import { useAssets } from '@/features/assets/hooks';
-import { useAuthStore, isManagerOrAbove } from '@/features/auth/store';
+import { useAuthStore, isSupervisorOrAbove } from '@/features/auth/store';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { RequireRole } from '@/components/ui/require-role';
 import { ScheduleEditor, emptySchedule } from '@/components/ui/schedule-editor';
@@ -390,7 +390,7 @@ function ConfigureAssetsPanel({ templateId, onClose }: { templateId: string; onC
 
 export default function TemplatesPage() {
   const user = useAuthStore((s) => s.user);
-  const canManageTemplates = isManagerOrAbove(user?.role);
+  const canManageTemplates = isSupervisorOrAbove(user?.role);
   const areas = useAreas();
   const templates = useTemplates();
   const deleteTemplate = useDeleteTemplate();
@@ -413,7 +413,7 @@ export default function TemplatesPage() {
   }
 
   return (
-    <RequireRole roles={['Directoria', 'Gerencia']}>
+    <RequireRole roles={['Directoria', 'Gerencia', 'Supervisor']}>
     <div className="page">
       <div className="toolbar">
         <div>

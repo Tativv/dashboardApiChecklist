@@ -22,7 +22,7 @@ const nav: [string, string, string][] = [
 const access: Record<string, UserRole[]> = {
   '/users': ['Directoria'],
   '/settings': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia'],
-  '/templates': ['Directoria', 'Gerencia'],
+  '/templates': ['Directoria', 'Gerencia', 'Supervisor'],
   '/areas': ['Directoria', 'Gerencia'],
   '/assets': ['Directoria', 'Gerencia'],
   '/reports': ['Directoria', 'Supervisor', 'Gerencia'],

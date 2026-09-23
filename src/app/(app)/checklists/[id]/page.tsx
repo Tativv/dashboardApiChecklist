@@ -2,7 +2,7 @@
 import { use, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuthStore, isSupervisorOrAbove, isManagerOrAbove } from '@/features/auth/store';
+import { useAuthStore, isSupervisorOrAbove } from '@/features/auth/store';
 import {
   useInstance,
   useStartInstance,
@@ -32,7 +32,6 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const canManage = isSupervisorOrAbove(user?.role);
-  const canManageInstances = isManagerOrAbove(user?.role);
   const instanceQuery = useInstance(id);
   const startMutation = useStartInstance();
   const finishMutation = useFinishInstance();
@@ -215,7 +214,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
               Reabrir
             </button>
           )}
-          {canManageInstances && (
+          {canManage && (
             <button className="btn btn-secondary" disabled={deleteInstanceMutation.isPending} onClick={onDelete}>
               Excluir
             </button>
