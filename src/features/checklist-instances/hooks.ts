@@ -4,8 +4,8 @@ import { InstanceFilters } from './api';
 
 const KEY = ['checklist-instances'];
 
-export function useInstances(filters: InstanceFilters = {}) {
-  return useQuery({ queryKey: [...KEY, filters], queryFn: () => api.listInstances(filters) });
+export function useInstances(filters: InstanceFilters = {}, enabled = true) {
+  return useQuery({ queryKey: [...KEY, filters], queryFn: () => api.listInstances(filters), enabled });
 }
 
 export function useInstance(id?: string) {

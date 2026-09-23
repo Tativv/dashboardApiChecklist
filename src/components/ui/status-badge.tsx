@@ -67,7 +67,7 @@ const taskExecutionStatusClass: Record<TaskExecutionStatus, string> = {
   Skipped: 'progress'
 };
 
-const taskExecutionStatusLabel: Record<TaskExecutionStatus, string> = {
+export const taskExecutionStatusLabel: Record<TaskExecutionStatus, string> = {
   Pending: 'Pendente',
   Completed: 'Concluída',
   Skipped: 'Pulada'
