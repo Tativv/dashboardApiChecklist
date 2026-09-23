@@ -9,7 +9,7 @@ const statusClass: Record<ChecklistStatus, string> = {
   Reviewed: 'approved'
 };
 
-const statusLabel: Record<ChecklistStatus, string> = {
+export const statusLabel: Record<ChecklistStatus, string> = {
   Pending: 'Pendente',
   Approved: 'Aprovado',
   InProgress: 'Em andamento',
