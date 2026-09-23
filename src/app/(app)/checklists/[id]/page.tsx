@@ -42,14 +42,14 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   const assignTaskMutation = useAssignTask();
   const deleteInstanceMutation = useDeleteInstance();
   const uploadEvidenceMutation = useUploadEvidence();
-  const collaboratorsQuery = useUsers({ role: 'Colaborador', active: true }, canManage);
+  const assignableUsersQuery = useUsers({ active: true }, canManage);
   const [error, setError] = useState<string | null>(null);
   const [uploadedByTask, setUploadedByTask] = useState<Record<string, UploadedEvidence[]>>({});
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const instance = instanceQuery.data;
-  const collaborators = collaboratorsQuery.data ?? [];
-  const collaboratorNameById = new Map(collaborators.map((c) => [c.id, c.name]));
+  const assignableUsers = assignableUsersQuery.data ?? [];
+  const assignableUserNameById = new Map(assignableUsers.map((c) => [c.id, c.name]));
 
   if (instanceQuery.isLoading) {
     return (
@@ -267,7 +267,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                       onChange={(e) => onAssignTask(t.id, e.target.value)}
                     >
                       <option value="">Não designado</option>
-                      {collaborators.map((c) => (
+                      {assignableUsers.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
                         </option>
@@ -276,7 +276,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                   ) : (
                     <span className="muted">
                       {t.assignedUserId
-                        ? (collaboratorNameById.get(t.assignedUserId) ??
+                        ? (assignableUserNameById.get(t.assignedUserId) ??
                             (t.assignedUserId === user?.id ? 'Você' : 'Designada'))
                         : 'Não designado'}
                     </span>
