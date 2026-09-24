@@ -124,14 +124,12 @@ export function useAssignTask() {
     mutationFn: ({
       instanceId,
       taskExecutionId,
-      userId,
-      estimatedDurationMinutes
+      userId
     }: {
       instanceId: string;
       taskExecutionId: string;
       userId: string | null;
-      estimatedDurationMinutes?: number | null;
-    }) => api.assignTask(instanceId, taskExecutionId, userId, estimatedDurationMinutes),
+    }) => api.assignTask(instanceId, taskExecutionId, userId),
     onSuccess: (_data, { instanceId }) => {
       qc.invalidateQueries({ queryKey: [...KEY, instanceId] });
       qc.invalidateQueries({ queryKey: KEY });

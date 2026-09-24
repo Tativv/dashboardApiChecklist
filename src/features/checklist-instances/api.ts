@@ -77,17 +77,9 @@ export async function reviewTask(instanceId: string, taskExecutionId: string) {
   return data;
 }
 
-export async function assignTask(
-  instanceId: string,
-  taskExecutionId: string,
-  userId: string | null,
-  estimatedDurationMinutes?: number | null
-) {
-  const { data } = await http.post(
-    `/checklist-instances/${instanceId}/tasks/${taskExecutionId}/assign`,
-    { userId, estimatedDurationMinutes: estimatedDurationMinutes ?? null }
-  );
-  return data as { id: string; assignedUserId?: string | null; createdByUserId?: string | null; estimatedDurationMinutes?: number | null };
+export async function assignTask(instanceId: string, taskExecutionId: string, userId: string | null) {
+  const { data } = await http.post(`/checklist-instances/${instanceId}/tasks/${taskExecutionId}/assign`, { userId });
+  return data as { id: string; assignedUserId?: string | null; createdByUserId?: string | null };
 }
 
 export async function getMyAssignedTasks(date?: string): Promise<MyAssignedTaskItemDto[]> {

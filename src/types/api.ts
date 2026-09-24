@@ -46,6 +46,7 @@ export interface ChecklistTaskDto {
   name: string;
   description?: string | null;
   order: number;
+  estimatedDurationMinutes?: number | null;
   executionMode: TaskExecutionMode;
   schedules: ScheduleDto[];
 }
@@ -54,6 +55,7 @@ export interface ChecklistTaskInput {
   name: string;
   description?: string | null;
   order: number;
+  estimatedDurationMinutes?: number | null;
   executionMode: TaskExecutionMode;
   schedules: ScheduleInput[];
 }
@@ -157,6 +159,13 @@ export interface DashboardReportDto {
   overdue: number;
   averageDurationSeconds?: number | null;
   completionRatePercent: number;
+  tasksTotal: number;
+  tasksPending: number;
+  tasksInProgress: number;
+  tasksCompleted: number;
+  tasksReviewed: number;
+  tasksOverdue: number;
+  averageTaskDurationSeconds?: number | null;
 }
 
 export interface ByDateReportItemDto {

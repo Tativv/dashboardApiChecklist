@@ -35,17 +35,35 @@ export default function DashboardPage() {
       <p className="page-subtitle">Este é o status operacional do hotel hoje.</p>
 
       {canSeeReports ? (
-        <div className="kpis">
-          <K label="Total" value={report ? String(report.total) : '—'} />
-          <K label="Pendentes" value={report ? String(report.pending) : '—'} />
-          <K
-            label="Concluídos"
-            value={report ? `${report.completed}/${report.total}` : '—'}
-            note={report ? `${report.completionRatePercent}% concluído` : undefined}
-          />
-          <K label="Duração média" value={report ? formatDuration(report.averageDurationSeconds) : '—'} />
-          <K label="Vencidos" value={report ? String(report.overdue) : '—'} />
-        </div>
+        <>
+          <div className="kpis">
+            <K label="Total" value={report ? String(report.total) : '—'} />
+            <K label="Pendentes" value={report ? String(report.pending) : '—'} />
+            <K
+              label="Concluídos"
+              value={report ? `${report.completed}/${report.total}` : '—'}
+              note={report ? `${report.completionRatePercent}% concluído` : undefined}
+            />
+            <K label="Duração média" value={report ? formatDuration(report.averageDurationSeconds) : '—'} />
+            <K label="Vencidos" value={report ? String(report.overdue) : '—'} />
+          </div>
+
+          <h2 className="card-title" style={{ marginTop: 24 }}>
+            Tarefas
+          </h2>
+          <div className="kpis">
+            <K label="Total" value={report ? String(report.tasksTotal) : '—'} />
+            <K label="Pendentes" value={report ? String(report.tasksPending) : '—'} />
+            <K label="Em andamento" value={report ? String(report.tasksInProgress) : '—'} />
+            <K
+              label="Concluídas"
+              value={report ? `${report.tasksCompleted + report.tasksReviewed}/${report.tasksTotal}` : '—'}
+              note={report ? `${report.tasksReviewed} revisadas` : undefined}
+            />
+            <K label="Duração média" value={report ? formatDuration(report.averageTaskDurationSeconds) : '—'} />
+            <K label="Vencidas" value={report ? String(report.tasksOverdue) : '—'} />
+          </div>
+        </>
       ) : null}
 
       <div className="grid">

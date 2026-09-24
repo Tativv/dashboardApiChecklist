@@ -44,7 +44,6 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   const assignableUsersQuery = useUsers({ active: true }, canManage);
   const [error, setError] = useState<string | null>(null);
   const [uploadedByTask, setUploadedByTask] = useState<Record<string, UploadedEvidence[]>>({});
-  const [durationByTask, setDurationByTask] = useState<Record<string, string>>({});
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const instance = instanceQuery.data;
@@ -104,24 +103,10 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
     await runAction(() => reviewTaskMutation.mutateAsync({ instanceId: id, taskExecutionId }));
   }
 
-  async function onAssignTask(taskExecutionId: string, userId: string, estimatedDurationMinutes?: number | null) {
+  async function onAssignTask(taskExecutionId: string, userId: string) {
     await runAction(() =>
-      assignTaskMutation.mutateAsync({
-        instanceId: id,
-        taskExecutionId,
-        userId: userId || null,
-        estimatedDurationMinutes
-      })
+      assignTaskMutation.mutateAsync({ instanceId: id, taskExecutionId, userId: userId || null })
     );
-  }
-
-  function onDurationCommit(t: ChecklistTaskExecutionDto) {
-    const raw = durationByTask[t.id];
-    if (raw === undefined) return;
-    const parsed = raw === '' ? null : Number(raw);
-    if (parsed !== null && (Number.isNaN(parsed) || parsed < 0)) return;
-    if (parsed === (t.estimatedDurationMinutes ?? null)) return;
-    onAssignTask(t.id, t.assignedUserId ?? '', parsed);
   }
 
   async function onUpload(taskExecutionId: string, file: File) {
@@ -251,7 +236,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                       className="btn btn-secondary btn-sm"
                       value={t.assignedUserId ?? ''}
                       disabled={assignTaskMutation.isPending}
-                      onChange={(e) => onAssignTask(t.id, e.target.value, t.estimatedDurationMinutes)}
+                      onChange={(e) => onAssignTask(t.id, e.target.value)}
                     >
                       <option value="">Não designado</option>
                       {assignableUsers.map((c) => (
@@ -269,22 +254,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                     </span>
                   )}
                 </td>
-                <td>
-                  {canManage && (instance.status === 'Pending' || instance.status === 'InProgress') ? (
-                    <input
-                      type="number"
-                      min={0}
-                      className="btn btn-secondary btn-sm"
-                      style={{ width: 70 }}
-                      placeholder="min"
-                      value={durationByTask[t.id] ?? (t.estimatedDurationMinutes ?? '')}
-                      onChange={(e) => setDurationByTask((prev) => ({ ...prev, [t.id]: e.target.value }))}
-                      onBlur={() => onDurationCommit(t)}
-                    />
-                  ) : (
-                    <span className="muted">{t.estimatedDurationMinutes ? `${t.estimatedDurationMinutes} min` : '—'}</span>
-                  )}
-                </td>
+                <td className="muted">{t.estimatedDurationMinutes ? `${t.estimatedDurationMinutes} min` : '—'}</td>
                 <td>
                   <TaskExecutionStatusBadge status={t.status} />
                 </td>

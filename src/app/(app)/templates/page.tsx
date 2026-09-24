@@ -29,7 +29,7 @@ interface FormState {
 }
 
 function emptyTask(order: number): ChecklistTaskInput {
-  return { name: '', description: '', order, executionMode: 'Scheduled', schedules: [emptySchedule(0)] };
+  return { name: '', description: '', order, estimatedDurationMinutes: null, executionMode: 'Scheduled', schedules: [emptySchedule(0)] };
 }
 
 function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (message?: string) => void }) {
@@ -51,6 +51,7 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
             name: t.name,
             description: t.description ?? '',
             order: t.order,
+            estimatedDurationMinutes: t.estimatedDurationMinutes ?? null,
             executionMode: t.executionMode,
             schedules: t.schedules.map((s) => ({ ...s }))
           }))
@@ -251,6 +252,17 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
                     style={{ fontSize: 12 }}
                   />
                 </div>
+                <input
+                  type="number"
+                  min={1}
+                  value={t.estimatedDurationMinutes ?? ''}
+                  onChange={(e) =>
+                    updateTask(i, { estimatedDurationMinutes: e.target.value === '' ? null : Number(e.target.value) })
+                  }
+                  placeholder="min"
+                  title="Duração estimada (min)"
+                  style={{ width: 64, fontSize: 12 }}
+                />
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => moveTask(i, -1)} disabled={i === 0}>
                   ↑
                 </button>
