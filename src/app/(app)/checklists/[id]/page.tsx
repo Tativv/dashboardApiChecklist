@@ -295,6 +295,10 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
     return canManage || t.assignedUserId === user?.id;
   }
 
+  function canViewComments(t: ChecklistTaskExecutionDto): boolean {
+    return canManage || (t.assignedUserId === user?.id && t.status !== 'Reviewed');
+  }
+
   function assignedUserName(t: ChecklistTaskExecutionDto): string {
     if (!t.assignedUserId) return 'Não designado';
     return assignableUserNameById.get(t.assignedUserId) ?? (t.assignedUserId === user?.id ? 'Você' : 'Designada');
@@ -395,10 +399,10 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
             <button
               type="button"
               className="icon-btn"
-              disabled={!canCompleteTask(t)}
+              disabled={!canViewComments(t)}
               title={
-                !canCompleteTask(t)
-                  ? 'Somente o colaborador designado ou um supervisor podem ver os comentários'
+                !canViewComments(t)
+                  ? 'Somente o colaborador designado (enquanto a tarefa não estiver revisada) ou um supervisor podem ver os comentários'
                   : 'Comentários'
               }
               onClick={() => setCommentsModalTask(t)}
