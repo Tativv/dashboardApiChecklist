@@ -46,57 +46,55 @@ function TaskDetailModal({
   onClose: () => void;
 }) {
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(15, 23, 42, 0.6)',
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20
-      }}
-      onClick={onClose}
-    >
-      <div
-        className="panel"
-        style={{ width: '100%', maxWidth: 520, maxHeight: '85vh', overflowY: 'auto', margin: 0 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="card-title" style={{ marginBottom: 0 }}>
-          {task.taskName}
-        </h2>
-        <p className="card-sub">Detalhes da tarefa</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 10 }}>
-          <DetailField label="Status" value={<TaskExecutionStatusBadge status={task.status} />} />
-          <DetailField label="Horário" value={task.scheduledForUtc ? formatTime(task.scheduledForUtc) : 'Contínua'} />
-          <DetailField
-            label="Duração estimada"
-            value={task.estimatedDurationMinutes ? `${task.estimatedDurationMinutes} min` : '—'}
-          />
-          <DetailField label="Designado a" value={assignedUserName} />
-          <DetailField label="Início" value={task.startedAt ? formatDateTime(task.startedAt) : '—'} />
-          <DetailField label="Término" value={task.completedAt ? formatDateTime(task.completedAt) : '—'} />
-          <DetailField label="Duração" value={formatDuration(task.durationSeconds)} />
-          <DetailField label="Comentários registrados" value={String(task.commentCount)} />
-        </div>
-        {task.comment && (
-          <div style={{ marginTop: 18 }}>
-            <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-              Comentário
-            </div>
-            <p style={{ fontSize: 14, marginTop: 4, whiteSpace: 'pre-wrap' }}>{task.comment}</p>
-          </div>
-        )}
-        <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
-            Fechar
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>{task.taskName}</h2>
+          <p>Detalhes da tarefa</p>
+          <button type="button" className="modal-close" onClick={onClose} title="Fechar">
+            ✕
           </button>
+        </div>
+        <div className="modal-body">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <DetailField label="Status" value={<TaskExecutionStatusBadge status={task.status} />} />
+            <DetailField label="Horário" value={task.scheduledForUtc ? formatTime(task.scheduledForUtc) : 'Contínua'} />
+            <DetailField
+              label="Duração estimada"
+              value={task.estimatedDurationMinutes ? `${task.estimatedDurationMinutes} min` : '—'}
+            />
+            <DetailField label="Designado a" value={assignedUserName} />
+            <DetailField label="Início" value={task.startedAt ? formatDateTime(task.startedAt) : '—'} />
+            <DetailField label="Término" value={task.completedAt ? formatDateTime(task.completedAt) : '—'} />
+            <DetailField label="Duração" value={formatDuration(task.durationSeconds)} />
+            <DetailField label="Comentários registrados" value={String(task.commentCount)} />
+          </div>
+          {task.comment && (
+            <div style={{ marginTop: 18 }}>
+              <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
+                Comentário
+              </div>
+              <p style={{ fontSize: 14, marginTop: 4, whiteSpace: 'pre-wrap' }}>{task.comment}</p>
+            </div>
+          )}
+        </div>
+        <div className="modal-footer">
+          <div className="form-actions" style={{ marginTop: 0 }}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              Fechar
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+const SYSTEM_COMMENT_TEXTS = new Set(['Tarefa iniciada.', 'Tarefa concluída.', 'Tarefa revisada.', 'Tarefa reiniciada.', 'Tarefa desdesignada.']);
+
+function isSystemComment(text?: string | null): boolean {
+  if (!text) return false;
+  return SYSTEM_COMMENT_TEXTS.has(text) || text.startsWith('Tarefa designada a ');
 }
 
 function TaskCommentsModal({
@@ -133,95 +131,97 @@ function TaskCommentsModal({
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(15, 23, 42, 0.6)',
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20
-      }}
-      onClick={onClose}
-    >
-      <div
-        className="panel"
-        style={{ width: '100%', maxWidth: 520, maxHeight: '85vh', overflowY: 'auto', margin: 0 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="card-title" style={{ marginBottom: 0 }}>
-          Comentários
-        </h2>
-        <p className="card-sub">{taskName}</p>
-        <ErrorBanner message={error} />
-        {commentsQuery.isLoading && <p className="muted">Carregando…</p>}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto' }}>
-          {comments.map((c) => (
-            <div key={c.id} style={{ borderTop: '1px solid var(--line)', paddingTop: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12 }}>
-                <b>{c.authorName}</b>
-                <span className="muted">{formatDateTime(c.createdAt)}</span>
-              </div>
-              {c.text && <p style={{ fontSize: 13, margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{c.text}</p>}
-              {c.fileName && (
-                <div style={{ marginTop: 6 }}>
-                  <CommentFileThumb commentId={c.id} fileName={c.fileName} />
-                </div>
-              )}
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Comentários</h2>
+          <p>{taskName}</p>
+          <button type="button" className="modal-close" onClick={onClose} title="Fechar">
+            ✕
+          </button>
+        </div>
+
+        <div className="modal-body">
+          <ErrorBanner message={error} />
+          {commentsQuery.isLoading && <p className="muted">Carregando…</p>}
+          {!commentsQuery.isLoading && comments.length > 0 && (
+            <div className="timeline">
+              {comments.map((c) => {
+                const event = isSystemComment(c.text);
+                return (
+                  <div key={c.id} className={'timeline-item' + (event ? ' event' : ' comment')}>
+                    <span className="timeline-dot" />
+                    <div className="timeline-text">
+                      {event ? c.text : c.text ? `"${c.text}"` : 'Anexou um arquivo.'}
+                    </div>
+                    <div className="timeline-meta">
+                      <b>{c.authorName}</b>
+                      <span>·</span>
+                      <span>{formatDateTime(c.createdAt)}</span>
+                    </div>
+                    {c.fileName && (
+                      <div className="timeline-file">
+                        <CommentFileThumb commentId={c.id} fileName={c.fileName} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          ))}
+          )}
           {!commentsQuery.isLoading && comments.length === 0 && (
             <p className="muted" style={{ fontSize: 13 }}>
               Nenhum comentário ainda.
             </p>
           )}
         </div>
-        <form onSubmit={onSubmit} style={{ marginTop: 14 }}>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Escreva um comentário…"
-            maxLength={2000}
-            rows={3}
-            style={{ width: '100%', resize: 'vertical' }}
-          />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic"
-              style={{ display: 'none' }}
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+
+        <div className="modal-footer">
+          <form onSubmit={onSubmit}>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Escreva um comentário…"
+              maxLength={2000}
+              rows={3}
+              style={{ width: '100%', resize: 'vertical' }}
             />
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>
-              {file ? 'Trocar arquivo' : '+ Anexar arquivo'}
-            </button>
-            {file && (
-              <span className="muted" style={{ fontSize: 12 }}>
-                {file.name}{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFile(null);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                  }}
-                >
-                  remover
-                </button>
-              </span>
-            )}
-          </div>
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
-              Fechar
-            </button>
-            <button className="btn btn-primary" disabled={addComment.isPending || (!text.trim() && !file)}>
-              {addComment.isPending ? 'Enviando…' : 'Comentar'}
-            </button>
-          </div>
-        </form>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic"
+                style={{ display: 'none' }}
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>
+                {file ? 'Trocar arquivo' : '+ Anexar arquivo'}
+              </button>
+              {file && (
+                <span className="muted" style={{ fontSize: 12 }}>
+                  {file.name}{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                  >
+                    remover
+                  </button>
+                </span>
+              )}
+            </div>
+            <div className="form-actions">
+              <button type="button" className="btn btn-secondary" onClick={onClose}>
+                Fechar
+              </button>
+              <button className="btn btn-primary" disabled={addComment.isPending || (!text.trim() && !file)}>
+                {addComment.isPending ? 'Enviando…' : 'Comentar'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
