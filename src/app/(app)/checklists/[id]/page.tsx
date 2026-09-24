@@ -386,7 +386,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
           </button>
         </td>
         <td>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="task-actions">
             <button
               type="button"
               className="icon-btn"
