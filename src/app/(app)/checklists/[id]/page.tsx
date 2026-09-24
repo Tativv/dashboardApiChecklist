@@ -101,11 +101,13 @@ function TaskCommentsModal({
   instanceId,
   taskExecutionId,
   taskName,
+  canAddComment,
   onClose
 }: {
   instanceId: string;
   taskExecutionId: string;
   taskName: string;
+  canAddComment: boolean;
   onClose: () => void;
 }) {
   const commentsQuery = useTaskComments(instanceId, taskExecutionId);
@@ -177,50 +179,61 @@ function TaskCommentsModal({
         </div>
 
         <div className="modal-footer">
-          <form onSubmit={onSubmit}>
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Escreva um comentário…"
-              maxLength={2000}
-              rows={3}
-              style={{ width: '100%', resize: 'vertical' }}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic"
-                style={{ display: 'none' }}
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          {canAddComment ? (
+            <form onSubmit={onSubmit}>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Escreva um comentário…"
+                maxLength={2000}
+                rows={3}
+                style={{ width: '100%', resize: 'vertical' }}
               />
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>
-                {file ? 'Trocar arquivo' : '+ Anexar arquivo'}
-              </button>
-              {file && (
-                <span className="muted" style={{ fontSize: 12 }}>
-                  {file.name}{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFile(null);
-                      if (fileInputRef.current) fileInputRef.current.value = '';
-                    }}
-                  >
-                    remover
-                  </button>
-                </span>
-              )}
-            </div>
-            <div className="form-actions">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic"
+                  style={{ display: 'none' }}
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                />
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>
+                  {file ? 'Trocar arquivo' : '+ Anexar arquivo'}
+                </button>
+                {file && (
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    {file.name}{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFile(null);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}
+                    >
+                      remover
+                    </button>
+                  </span>
+                )}
+              </div>
+              <div className="form-actions">
+                <button type="button" className="btn btn-secondary" onClick={onClose}>
+                  Fechar
+                </button>
+                <button className="btn btn-primary" disabled={addComment.isPending || (!text.trim() && !file)}>
+                  {addComment.isPending ? 'Enviando…' : 'Comentar'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                Esta tarefa já foi revisada — não é possível adicionar novos comentários.
+              </p>
               <button type="button" className="btn btn-secondary" onClick={onClose}>
                 Fechar
               </button>
-              <button className="btn btn-primary" disabled={addComment.isPending || (!text.trim() && !file)}>
-                {addComment.isPending ? 'Enviando…' : 'Comentar'}
-              </button>
             </div>
-          </form>
+          )}
         </div>
       </div>
     </div>
@@ -295,7 +308,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
     return canManage || t.assignedUserId === user?.id;
   }
 
-  function canViewComments(t: ChecklistTaskExecutionDto): boolean {
+  function canAddComment(t: ChecklistTaskExecutionDto): boolean {
     return canManage || (t.assignedUserId === user?.id && t.status !== 'Reviewed');
   }
 
@@ -399,10 +412,10 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
             <button
               type="button"
               className="icon-btn"
-              disabled={!canViewComments(t)}
+              disabled={!canCompleteTask(t)}
               title={
-                !canViewComments(t)
-                  ? 'Somente o colaborador designado (enquanto a tarefa não estiver revisada) ou um supervisor podem ver os comentários'
+                !canCompleteTask(t)
+                  ? 'Somente o colaborador designado ou um supervisor podem ver os comentários'
                   : 'Comentários'
               }
               onClick={() => setCommentsModalTask(t)}
@@ -562,6 +575,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
           instanceId={id}
           taskExecutionId={commentsModalTask.id}
           taskName={commentsModalTask.taskName}
+          canAddComment={canAddComment(commentsModalTask)}
           onClose={() => setCommentsModalTask(null)}
         />
       )}
