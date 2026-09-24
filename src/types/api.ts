@@ -183,6 +183,12 @@ export interface ByDateReportItemDto {
   inProgress: number;
   completed: number;
   averageDurationSeconds?: number | null;
+  tasksTotal: number;
+  tasksPending: number;
+  tasksInProgress: number;
+  tasksCompleted: number;
+  tasksReviewed: number;
+  averageTaskDurationSeconds?: number | null;
 }
 
 export interface ByAreaReportItemDto {
@@ -193,6 +199,12 @@ export interface ByAreaReportItemDto {
   inProgress: number;
   completed: number;
   averageDurationSeconds?: number | null;
+  tasksTotal: number;
+  tasksPending: number;
+  tasksInProgress: number;
+  tasksCompleted: number;
+  tasksReviewed: number;
+  averageTaskDurationSeconds?: number | null;
 }
 
 export type CallPriority = 'Baixa' | 'Media' | 'Alta';
