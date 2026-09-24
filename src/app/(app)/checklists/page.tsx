@@ -185,56 +185,42 @@ export default function ChecklistsPage() {
         </span>
       </div>
 
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Checklist</th>
-              <th>Área / ativo</th>
-              <th>Data</th>
-              <th>Duração</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {instances.isLoading && (
-              <tr>
-                <td colSpan={6} className="muted">
-                  Carregando…
-                </td>
-              </tr>
-            )}
-            {list.map((x) => (
-              <tr key={x.id}>
-                <td>
-                  <b>{x.templateName}</b>
-                </td>
-                <td>{x.assetName}</td>
-                <td>{formatDate(x.date)}</td>
-                <td>{formatDuration(x.durationSeconds)}</td>
-                <td>
-                  <StatusBadge status={x.status} overdue={isOverdue(x.status, x.date)} />
-                </td>
-                <td className="actions">
-                  <Link href={`/checklists/${x.id}`}>Ver</Link>
-                  {canManageInstances && (
-                    <button onClick={() => handleDelete(x.id, x.templateName)} disabled={deleteInstance.isPending}>
-                      Excluir
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {!instances.isLoading && list.length === 0 && (
-              <tr>
-                <td colSpan={6} className="muted">
-                  Nenhum checklist encontrado para os filtros selecionados.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="card-list">
+        {list.map((x) => (
+          <div className="list-card" key={x.id}>
+            <div className="list-card-top">
+              <span className="list-card-title">{x.templateName}</span>
+              <StatusBadge status={x.status} overdue={isOverdue(x.status, x.date)} />
+            </div>
+            <div className="list-card-bottom">
+              <div className="list-card-meta">
+                <span>{x.assetName}</span>
+                <span>·</span>
+                <span>{formatDate(x.date)}</span>
+                <span>·</span>
+                <span>{formatDuration(x.durationSeconds)}</span>
+              </div>
+              <div className="task-actions">
+                <Link href={`/checklists/${x.id}`} className="btn btn-secondary btn-sm">
+                  Ver
+                </Link>
+                {canManageInstances && (
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleDelete(x.id, x.templateName)}
+                    disabled={deleteInstance.isPending}
+                  >
+                    Excluir
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+        {instances.isLoading && <p className="muted">Carregando…</p>}
+        {!instances.isLoading && list.length === 0 && (
+          <div className="card empty">Nenhum checklist encontrado para os filtros selecionados.</div>
+        )}
       </div>
     </div>
   );

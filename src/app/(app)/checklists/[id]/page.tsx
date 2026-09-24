@@ -1,5 +1,5 @@
 'use client';
-import { use, useMemo, useRef, useState } from 'react';
+import { use, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, isSupervisorOrAbove } from '@/features/auth/store';
@@ -16,10 +16,11 @@ import {
   useTaskComments,
   useAddTaskComment
 } from '@/features/checklist-instances/hooks';
+import { fetchTaskCommentFileBlobUrl } from '@/features/checklist-instances/api';
 import { useUsers } from '@/features/users/hooks';
 import { StatusBadge, TaskExecutionStatusBadge, isOverdue } from '@/components/ui/status-badge';
 import { ErrorBanner } from '@/components/ui/error-banner';
-import { CommentFileThumb } from '@/components/ui/comment-file-thumb';
+import { CommentsTimelineModal } from '@/components/ui/comments-timeline-modal';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toApiError } from '@/lib/api-error';
 import { formatDate, formatDateTime, formatDuration, formatTime } from '@/lib/format';
@@ -112,131 +113,31 @@ function TaskCommentsModal({
 }) {
   const commentsQuery = useTaskComments(instanceId, taskExecutionId);
   const addComment = useAddTaskComment();
-  const [text, setText] = useState('');
-  const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const comments = [...(commentsQuery.data ?? [])].reverse();
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!text.trim() && !file) return;
+  async function handleSubmit(input: { text: string | null; file: File | null }) {
     setError(null);
     try {
-      await addComment.mutateAsync({ instanceId, taskExecutionId, text: text.trim() || null, file });
-      setText('');
-      setFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      await addComment.mutateAsync({ instanceId, taskExecutionId, text: input.text, file: input.file });
     } catch (err) {
       setError(toApiError(err).message);
     }
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Comentários</h2>
-          <p>{taskName}</p>
-          <button type="button" className="modal-close" onClick={onClose} title="Fechar">
-            ✕
-          </button>
-        </div>
-
-        <div className="modal-body">
-          <ErrorBanner message={error} />
-          {commentsQuery.isLoading && <p className="muted">Carregando…</p>}
-          {!commentsQuery.isLoading && comments.length > 0 && (
-            <div className="timeline">
-              {comments.map((c) => {
-                const event = isSystemComment(c.text);
-                return (
-                  <div key={c.id} className={'timeline-item' + (event ? ' event' : ' comment')}>
-                    <span className="timeline-dot" />
-                    <div className="timeline-text">
-                      {event ? c.text : c.text ? `"${c.text}"` : 'Anexou um arquivo.'}
-                    </div>
-                    <div className="timeline-meta">
-                      <b>{c.authorName}</b>
-                      <span>·</span>
-                      <span>{formatDateTime(c.createdAt)}</span>
-                    </div>
-                    {c.fileName && (
-                      <div className="timeline-file">
-                        <CommentFileThumb commentId={c.id} fileName={c.fileName} />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {!commentsQuery.isLoading && comments.length === 0 && (
-            <p className="muted" style={{ fontSize: 13 }}>
-              Nenhum comentário ainda.
-            </p>
-          )}
-        </div>
-
-        <div className="modal-footer">
-          {canAddComment ? (
-            <form onSubmit={onSubmit}>
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Escreva um comentário…"
-                maxLength={2000}
-                rows={3}
-                style={{ width: '100%', resize: 'vertical' }}
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/heic"
-                  style={{ display: 'none' }}
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                />
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>
-                  {file ? 'Trocar arquivo' : '+ Anexar arquivo'}
-                </button>
-                {file && (
-                  <span className="muted" style={{ fontSize: 12 }}>
-                    {file.name}{' '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFile(null);
-                        if (fileInputRef.current) fileInputRef.current.value = '';
-                      }}
-                    >
-                      remover
-                    </button>
-                  </span>
-                )}
-              </div>
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={onClose}>
-                  Fechar
-                </button>
-                <button className="btn btn-primary" disabled={addComment.isPending || (!text.trim() && !file)}>
-                  {addComment.isPending ? 'Enviando…' : 'Comentar'}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-                Esta tarefa já foi revisada — não é possível adicionar novos comentários.
-              </p>
-              <button type="button" className="btn btn-secondary" onClick={onClose}>
-                Fechar
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    <CommentsTimelineModal
+      subtitle={taskName}
+      comments={commentsQuery.data ?? []}
+      isLoading={commentsQuery.isLoading}
+      canAddComment={canAddComment}
+      isSubmitting={addComment.isPending}
+      submitError={error}
+      isSystemComment={isSystemComment}
+      fetchFileUrl={fetchTaskCommentFileBlobUrl}
+      onSubmit={handleSubmit}
+      onClose={onClose}
+      lockedMessage="Esta tarefa já foi revisada — não é possível adicionar novos comentários."
+    />
   );
 }
 
@@ -378,15 +279,15 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
       canManage && (instance!.status === 'Pending' || instance!.status === 'InProgress') && t.status !== 'Reviewed';
 
     return (
-      <div key={t.id} className={'task-card' + (nested ? ' task-card-nested' : '') + (done ? ' completed' : '')}>
-        <div className="task-card-top">
-          <span className={'task-card-title' + (nested ? ' muted' : '')}>
+      <div key={t.id} className={'list-card' + (nested ? ' list-card-nested' : '') + (done ? ' completed' : '')}>
+        <div className="list-card-top">
+          <span className={'list-card-title' + (nested ? ' muted' : '')}>
             {nested ? (t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Contínua') : t.taskName}
           </span>
           <TaskExecutionStatusBadge status={t.status} />
         </div>
-        <div className="task-card-bottom">
-          <div className="task-card-meta">
+        <div className="list-card-bottom">
+          <div className="list-card-meta">
             {!nested && <span>{t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Contínua'}</span>}
             {!nested && <span>·</span>}
             {canEditAssignment ? (
@@ -549,19 +450,19 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      <div className="task-list" style={{ marginTop: 12 }}>
+      <div className="card-list" style={{ marginTop: 12 }}>
         {taskGroups.map((group) =>
           group.items.length === 1 ? (
             renderTaskCard(group.items[0], false)
           ) : (
-            <div key={group.taskId} className="task-card-group">
-              <button type="button" className="task-card-group-header" onClick={() => toggleGroup(group.taskId)}>
+            <div key={group.taskId} className="list-card-group">
+              <button type="button" className="list-card-group-header" onClick={() => toggleGroup(group.taskId)}>
                 <span className="caret">{collapsedGroups.has(group.taskId) ? '▸' : '▾'}</span>
                 <b>{group.taskName}</b>
                 <span className="badge">{group.items.length} horários</span>
               </button>
               {!collapsedGroups.has(group.taskId) && (
-                <div className="task-card-group-body">
+                <div className="list-card-group-body">
                   {group.items.map((t) => renderTaskCard(t, true))}
                 </div>
               )}

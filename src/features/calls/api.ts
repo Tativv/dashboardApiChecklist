@@ -1,5 +1,5 @@
 import { http } from '@/lib/http';
-import { CallDto, CallListItemDto, CallPriority, CallStatus } from '@/types/api';
+import { CallCommentDto, CallDto, CallListItemDto, CallPriority, CallStatus } from '@/types/api';
 
 export interface CallFilters {
   areaId?: string;
@@ -48,4 +48,22 @@ export async function startCall(id: string) {
 export async function finishCall(id: string) {
   const { data } = await http.post(`/calls/${id}/finish`);
   return data as { id: string; status: CallStatus; completedAt?: string | null; durationSeconds?: number | null };
+}
+
+export async function listCallComments(callId: string): Promise<CallCommentDto[]> {
+  const { data } = await http.get<CallCommentDto[]>(`/calls/${callId}/comments`);
+  return data;
+}
+
+export async function addCallComment(callId: string, input: { text?: string | null; file?: File | null }): Promise<CallCommentDto> {
+  const formData = new FormData();
+  if (input.text) formData.append('text', input.text);
+  if (input.file) formData.append('file', input.file);
+  const { data } = await http.post<CallCommentDto>(`/calls/${callId}/comments`, formData);
+  return data;
+}
+
+export async function fetchCallCommentFileBlobUrl(commentId: string): Promise<string> {
+  const { data } = await http.get(`/calls/comments/${commentId}/file`, { responseType: 'blob' });
+  return URL.createObjectURL(data as Blob);
 }

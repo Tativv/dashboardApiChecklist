@@ -1,12 +1,23 @@
 'use client';
 import { useState } from 'react';
 import { useAuthStore, isSupervisorOrAbove } from '@/features/auth/store';
-import { useCalls, useCall, useCreateCall, useAssignCall, useStartCall, useFinishCall } from '@/features/calls/hooks';
+import {
+  useCalls,
+  useCall,
+  useCreateCall,
+  useAssignCall,
+  useStartCall,
+  useFinishCall,
+  useCallComments,
+  useAddCallComment
+} from '@/features/calls/hooks';
+import { fetchCallCommentFileBlobUrl } from '@/features/calls/api';
 import { useAreas } from '@/features/areas/hooks';
 import { useUsers } from '@/features/users/hooks';
 import { RequireRole } from '@/components/ui/require-role';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { CommentsTimelineModal } from '@/components/ui/comments-timeline-modal';
 import { toApiError } from '@/lib/api-error';
 import { formatDateTime, formatDuration } from '@/lib/format';
 import { CallListItemDto, CallPriority, CallStatus } from '@/types/api';
@@ -15,6 +26,43 @@ const priorityLabel: Record<CallPriority, string> = { Baixa: 'Baixa', Media: 'M�
 const priorityClass: Record<CallPriority, string> = { Baixa: 'ready', Media: 'progress', Alta: 'overdue' };
 const statusLabel: Record<CallStatus, string> = { Open: 'Aberto', InProgress: 'Em andamento', Finished: 'Finalizado' };
 const statusClass: Record<CallStatus, string> = { Open: 'pending', InProgress: 'progress', Finished: 'approved' };
+
+const SYSTEM_CALL_COMMENT_TEXTS = new Set(['Chamado iniciado.', 'Chamado concluído.', 'Chamado desdesignado.']);
+
+function isSystemCallComment(text?: string | null): boolean {
+  if (!text) return false;
+  return SYSTEM_CALL_COMMENT_TEXTS.has(text) || text.startsWith('Chamado designado a ');
+}
+
+function CallCommentsModal({ callId, subject, onClose }: { callId: string; subject: string; onClose: () => void }) {
+  const commentsQuery = useCallComments(callId);
+  const addComment = useAddCallComment();
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(input: { text: string | null; file: File | null }) {
+    setError(null);
+    try {
+      await addComment.mutateAsync({ callId, text: input.text, file: input.file });
+    } catch (err) {
+      setError(toApiError(err).message);
+    }
+  }
+
+  return (
+    <CommentsTimelineModal
+      subtitle={subject}
+      comments={commentsQuery.data ?? []}
+      isLoading={commentsQuery.isLoading}
+      canAddComment
+      isSubmitting={addComment.isPending}
+      submitError={error}
+      isSystemComment={isSystemCallComment}
+      fetchFileUrl={fetchCallCommentFileBlobUrl}
+      onSubmit={handleSubmit}
+      onClose={onClose}
+    />
+  );
+}
 
 function CreateCallForm({ onClose }: { onClose: () => void }) {
   const areas = useAreas();
@@ -111,75 +159,73 @@ function CallDetailModal({ id, onClose }: { id: string; onClose: () => void }) {
   const c = call.data;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(15, 23, 42, 0.6)',
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20
-      }}
-      onClick={onClose}
-    >
-      <div
-        className="panel"
-        style={{ width: '100%', maxWidth: 560, maxHeight: '85vh', overflowY: 'auto', margin: 0 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {call.isLoading && <p className="muted">Carregando…</p>}
-        {!call.isLoading && !c && <p className="muted">Chamado não encontrado.</p>}
-        {c && (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-              <h2 className="card-title" style={{ marginBottom: 0 }}>
-                {c.subject}
-              </h2>
-              <div style={{ display: 'flex', gap: 6 }}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>{c ? c.subject : 'Chamado'}</h2>
+          <p>Detalhes do chamado</p>
+          <button type="button" className="modal-close" onClick={onClose} title="Fechar">
+            ✕
+          </button>
+        </div>
+        <div className="modal-body">
+          {call.isLoading && <p className="muted">Carregando…</p>}
+          {!call.isLoading && !c && <p className="muted">Chamado não encontrado.</p>}
+          {c && (
+            <>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
                 <span className={'status ' + priorityClass[c.priority]}>{priorityLabel[c.priority]}</span>
                 <span className={'status ' + statusClass[c.status]}>{statusLabel[c.status]}</span>
               </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 18 }}>
-              <DetailField label="Área" value={c.areaName} />
-              <DetailField label="Designado a" value={c.assignedUserName ?? 'Não designado'} />
-              <DetailField label="Aberto por" value={c.createdByUserName} />
-              <DetailField label="Aberto em" value={formatDateTime(c.createdAtUtc)} />
-              <DetailField label="Iniciado em" value={c.startedAt ? formatDateTime(c.startedAt) : '—'} />
-              <DetailField
-                label="Concluído em"
-                value={c.completedAt ? `${formatDateTime(c.completedAt)} (${formatDuration(c.durationSeconds)})` : '—'}
-              />
-            </div>
-
-            <div style={{ marginTop: 18 }}>
-              <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-                Descrição
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <DetailField label="Área" value={c.areaName} />
+                <DetailField label="Designado a" value={c.assignedUserName ?? 'Não designado'} />
+                <DetailField label="Aberto por" value={c.createdByUserName} />
+                <DetailField label="Aberto em" value={formatDateTime(c.createdAtUtc)} />
+                <DetailField label="Iniciado em" value={c.startedAt ? formatDateTime(c.startedAt) : '—'} />
+                <DetailField
+                  label="Concluído em"
+                  value={c.completedAt ? `${formatDateTime(c.completedAt)} (${formatDuration(c.durationSeconds)})` : '—'}
+                />
               </div>
-              <p style={{ fontSize: 14, marginTop: 4, whiteSpace: 'pre-wrap' }}>{c.description || 'Sem descrição.'}</p>
-            </div>
-          </>
-        )}
 
-        <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
-            Fechar
-          </button>
+              <div style={{ marginTop: 18 }}>
+                <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
+                  Descrição
+                </div>
+                <p style={{ fontSize: 14, marginTop: 4, whiteSpace: 'pre-wrap' }}>{c.description || 'Sem descrição.'}</p>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="modal-footer">
+          <div className="form-actions" style={{ marginTop: 0 }}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              Fechar
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function CallRow({ call, currentUserId, canManage, assignableUsers, onView, onError }: {
+function CallCard({
+  call,
+  currentUserId,
+  canManage,
+  assignableUsers,
+  onView,
+  onComments,
+  onError
+}: {
   call: CallListItemDto;
   currentUserId: string;
   canManage: boolean;
   assignableUsers: { id: string; name: string }[];
   onView: (id: string) => void;
+  onComments: (call: CallListItemDto) => void;
   onError: (message: string) => void;
 }) {
   const assignCall = useAssignCall();
@@ -199,56 +245,68 @@ function CallRow({ call, currentUserId, canManage, assignableUsers, onView, onEr
   }
 
   return (
-    <tr>
-      <td>
-        <span className={'status ' + priorityClass[call.priority]}>{priorityLabel[call.priority]}</span>
-      </td>
-      <td>{call.subject}</td>
-      <td className="muted">{call.areaName}</td>
-      <td>
-        <span className={'status ' + statusClass[call.status]}>{statusLabel[call.status]}</span>
-      </td>
-      <td className="muted">{call.createdByUserName}</td>
-      <td>
-        {canManage ? (
-          <SearchableSelect
-            value={call.assignedUserId ?? ''}
-            disabled={pending || call.status === 'Finished'}
-            onChange={(v) => run(() => assignCall.mutateAsync({ id: call.id, userId: v || null }))}
-            placeholder="Não designado"
-            className="btn btn-secondary btn-sm"
-            options={assignableUsers.map((u) => ({ value: u.id, label: u.name }))}
-          />
-        ) : (
-          <span className="muted">
-            {call.assignedUserId ? (call.assignedUserName ?? 'Designado') : 'Não designado'}
-          </span>
-        )}
-        {!canManage && !call.assignedUserId && (
-          <button
-            className="btn btn-secondary btn-sm"
-            style={{ marginLeft: 8 }}
-            disabled={pending}
-            onClick={() => run(() => assignCall.mutateAsync({ id: call.id, userId: currentUserId }))}
-          >
-            Assumir
+    <div className="list-card">
+      <div className="list-card-top">
+        <span className="list-card-title">{call.subject}</span>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <span className={'status ' + priorityClass[call.priority]}>{priorityLabel[call.priority]}</span>
+          <span className={'status ' + statusClass[call.status]}>{statusLabel[call.status]}</span>
+        </div>
+      </div>
+      <div className="list-card-bottom">
+        <div className="list-card-meta">
+          <span>{call.areaName}</span>
+          <span>·</span>
+          <span>Aberto por {call.createdByUserName}</span>
+          <span>·</span>
+          {canManage ? (
+            <SearchableSelect
+              value={call.assignedUserId ?? ''}
+              disabled={pending || call.status === 'Finished'}
+              onChange={(v) => run(() => assignCall.mutateAsync({ id: call.id, userId: v || null }))}
+              placeholder="Não designado"
+              className="btn btn-secondary btn-sm"
+              options={assignableUsers.map((u) => ({ value: u.id, label: u.name }))}
+            />
+          ) : (
+            <span>{call.assignedUserId ? (call.assignedUserName ?? 'Designado') : 'Não designado'}</span>
+          )}
+          {!canManage && !call.assignedUserId && (
+            <button
+              className="btn btn-secondary btn-sm"
+              disabled={pending}
+              onClick={() => run(() => assignCall.mutateAsync({ id: call.id, userId: currentUserId }))}
+            >
+              Assumir
+            </button>
+          )}
+        </div>
+        <div className="task-actions">
+          <button type="button" className="icon-btn" title="Ver detalhes" onClick={() => onView(call.id)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
           </button>
-        )}
-      </td>
-      <td className="actions">
-        <button onClick={() => onView(call.id)}>Ver</button>
-        {canOperate && call.status === 'Open' && call.assignedUserId && (
-          <button disabled={pending} onClick={() => run(() => startCall.mutateAsync(call.id))}>
-            Iniciar
+          <button type="button" className="icon-btn" title="Comentários" onClick={() => onComments(call)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            {call.commentCount > 0 && <span className="icon-badge">{call.commentCount}</span>}
           </button>
-        )}
-        {canOperate && call.status === 'InProgress' && (
-          <button disabled={pending} onClick={() => run(() => finishCall.mutateAsync(call.id))}>
-            Concluir
-          </button>
-        )}
-      </td>
-    </tr>
+          {canOperate && call.status === 'Open' && call.assignedUserId && (
+            <button className="btn btn-secondary btn-sm" disabled={pending} onClick={() => run(() => startCall.mutateAsync(call.id))}>
+              Iniciar
+            </button>
+          )}
+          {canOperate && call.status === 'InProgress' && (
+            <button className="btn btn-primary btn-sm" disabled={pending} onClick={() => run(() => finishCall.mutateAsync(call.id))}>
+              Concluir
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -263,6 +321,7 @@ export default function CallsPage() {
   const calls = useCalls({ areaId: areaId || undefined, status, priority });
   const [creating, setCreating] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
+  const [commentsCall, setCommentsCall] = useState<CallListItemDto | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const assignableUsers = assignableUsersQuery.data ?? [];
@@ -318,50 +377,27 @@ export default function CallsPage() {
           />
         </div>
 
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Prioridade</th>
-                <th>Assunto</th>
-                <th>Área</th>
-                <th>Status</th>
-                <th>Aberto por</th>
-                <th>Designado a</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((c) => (
-                <CallRow
-                  key={c.id}
-                  call={c}
-                  currentUserId={user?.id ?? ''}
-                  canManage={canManage}
-                  assignableUsers={assignableUsers}
-                  onView={setViewingId}
-                  onError={setError}
-                />
-              ))}
-              {calls.isLoading && (
-                <tr>
-                  <td colSpan={7} className="muted">
-                    Carregando…
-                  </td>
-                </tr>
-              )}
-              {!calls.isLoading && list.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="muted">
-                    Nenhum chamado encontrado.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="card-list">
+          {list.map((c) => (
+            <CallCard
+              key={c.id}
+              call={c}
+              currentUserId={user?.id ?? ''}
+              canManage={canManage}
+              assignableUsers={assignableUsers}
+              onView={setViewingId}
+              onComments={setCommentsCall}
+              onError={setError}
+            />
+          ))}
+          {calls.isLoading && <p className="muted">Carregando…</p>}
+          {!calls.isLoading && list.length === 0 && <div className="card empty">Nenhum chamado encontrado.</div>}
         </div>
 
         {viewingId && <CallDetailModal id={viewingId} onClose={() => setViewingId(null)} />}
+        {commentsCall && (
+          <CallCommentsModal callId={commentsCall.id} subject={commentsCall.subject} onClose={() => setCommentsCall(null)} />
+        )}
       </div>
     </RequireRole>
   );

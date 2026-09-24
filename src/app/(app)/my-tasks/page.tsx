@@ -20,51 +20,33 @@ export default function MyTasksPage() {
         <input type="date" className="btn btn-secondary" value={date} onChange={(e) => setDate(e.target.value)} />
       </div>
 
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Tarefa</th>
-              <th>Checklist / Ativo</th>
-              <th>Horário</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {tasksQuery.isLoading && (
-              <tr>
-                <td colSpan={5} className="muted">
-                  Carregando…
-                </td>
-              </tr>
-            )}
-            {tasks.map((t) => (
-              <tr key={t.taskExecutionId}>
-                <td>
-                  <b>{t.taskName}</b>
-                </td>
-                <td>
+      <div className="card-list">
+        {tasks.map((t) => (
+          <div className="list-card" key={t.taskExecutionId}>
+            <div className="list-card-top">
+              <span className="list-card-title">{t.taskName}</span>
+              <TaskExecutionStatusBadge status={t.status} />
+            </div>
+            <div className="list-card-bottom">
+              <div className="list-card-meta">
+                <span>
                   {t.templateName} · {t.assetName}
-                </td>
-                <td className="muted">{t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Contínua'}</td>
-                <td>
-                  <TaskExecutionStatusBadge status={t.status} />
-                </td>
-                <td className="actions">
-                  <Link href={`/checklists/${t.instanceId}`}>Ver checklist</Link>
-                </td>
-              </tr>
-            ))}
-            {!tasksQuery.isLoading && tasks.length === 0 && (
-              <tr>
-                <td colSpan={5} className="muted">
-                  Você não tem tarefas designadas para {formatDate(date)}.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                </span>
+                <span>·</span>
+                <span>{t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Contínua'}</span>
+              </div>
+              <div className="task-actions">
+                <Link href={`/checklists/${t.instanceId}`} className="btn btn-secondary btn-sm">
+                  Ver checklist
+                </Link>
+              </div>
+            </div>
+          </div>
+        ))}
+        {tasksQuery.isLoading && <p className="muted">Carregando…</p>}
+        {!tasksQuery.isLoading && tasks.length === 0 && (
+          <div className="card empty">Você não tem tarefas designadas para {formatDate(date)}.</div>
+        )}
       </div>
     </div>
   );

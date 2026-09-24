@@ -226,6 +226,7 @@ export interface CallDto {
   completedAt?: string | null;
   durationSeconds?: number | null;
   createdAtUtc: string;
+  commentCount: number;
 }
 
 export interface CallListItemDto {
@@ -242,6 +243,17 @@ export interface CallListItemDto {
   startedAt?: string | null;
   completedAt?: string | null;
   createdAtUtc: string;
+  commentCount: number;
+}
+
+export interface CallCommentDto {
+  id: string;
+  authorUserId: string;
+  authorName: string;
+  createdAt: string;
+  text?: string | null;
+  fileName?: string | null;
+  contentType?: string | null;
 }
 
 export interface LoginResponse {

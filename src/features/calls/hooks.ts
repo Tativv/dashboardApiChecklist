@@ -43,3 +43,24 @@ export function useFinishCall() {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY })
   });
 }
+
+export function useCallComments(callId: string, enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, callId, 'comments'],
+    queryFn: () => api.listCallComments(callId),
+    enabled
+  });
+}
+
+export function useAddCallComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ callId, text, file }: { callId: string; text?: string | null; file?: File | null }) =>
+      api.addCallComment(callId, { text, file }),
+    onSuccess: (_data, { callId }) => {
+      qc.invalidateQueries({ queryKey: [...KEY, callId, 'comments'] });
+      qc.invalidateQueries({ queryKey: [...KEY, callId] });
+      qc.invalidateQueries({ queryKey: KEY });
+    }
+  });
+}
