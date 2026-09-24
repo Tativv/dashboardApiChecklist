@@ -88,9 +88,24 @@ export async function listTaskComments(instanceId: string, taskExecutionId: stri
   return data;
 }
 
-export async function addTaskComment(instanceId: string, taskExecutionId: string, text: string): Promise<TaskCommentDto> {
-  const { data } = await http.post<TaskCommentDto>(`/checklist-instances/${instanceId}/tasks/${taskExecutionId}/comments`, { text });
+export async function addTaskComment(
+  instanceId: string,
+  taskExecutionId: string,
+  input: { text?: string | null; file?: File | null }
+): Promise<TaskCommentDto> {
+  const formData = new FormData();
+  if (input.text) formData.append('text', input.text);
+  if (input.file) formData.append('file', input.file);
+  const { data } = await http.post<TaskCommentDto>(
+    `/checklist-instances/${instanceId}/tasks/${taskExecutionId}/comments`,
+    formData
+  );
   return data;
+}
+
+export async function fetchTaskCommentFileBlobUrl(commentId: string): Promise<string> {
+  const { data } = await http.get(`/checklist-instances/comments/${commentId}/file`, { responseType: 'blob' });
+  return URL.createObjectURL(data as Blob);
 }
 
 export async function assignTask(instanceId: string, taskExecutionId: string, userId: string | null) {
@@ -105,17 +120,3 @@ export async function getMyAssignedTasks(date?: string): Promise<MyAssignedTaskI
   return data;
 }
 
-export async function uploadEvidence(instanceId: string, taskExecutionId: string, file: File) {
-  const formData = new FormData();
-  formData.append('file', file);
-  const { data } = await http.post(
-    `/checklist-instances/${instanceId}/tasks/${taskExecutionId}/evidence`,
-    formData
-  );
-  return data as { id: string; fileName: string; contentType: string; fileSizeBytes: number; uploadedAt: string };
-}
-
-export async function fetchEvidenceBlobUrl(evidenceId: string): Promise<string> {
-  const { data } = await http.get(`/checklist-instances/evidence/${evidenceId}`, { responseType: 'blob' });
-  return URL.createObjectURL(data as Blob);
-}

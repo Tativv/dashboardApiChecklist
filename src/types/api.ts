@@ -99,7 +99,6 @@ export interface ChecklistTaskExecutionDto {
   executedByUserId?: string | null;
   approvedByUserId?: string | null;
   approvedAt?: string | null;
-  evidenceCount: number;
   commentCount: number;
 }
 
@@ -108,7 +107,9 @@ export interface TaskCommentDto {
   authorUserId: string;
   authorName: string;
   createdAt: string;
-  text: string;
+  text?: string | null;
+  fileName?: string | null;
+  contentType?: string | null;
 }
 
 export interface UpcomingOccurrenceDto {

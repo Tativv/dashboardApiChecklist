@@ -13,23 +13,17 @@ import {
   useRestartTask,
   useAssignTask,
   useDeleteInstance,
-  useUploadEvidence,
   useTaskComments,
   useAddTaskComment
 } from '@/features/checklist-instances/hooks';
 import { useUsers } from '@/features/users/hooks';
 import { StatusBadge, TaskExecutionStatusBadge, isOverdue } from '@/components/ui/status-badge';
 import { ErrorBanner } from '@/components/ui/error-banner';
-import { EvidenceThumb } from '@/components/ui/evidence-thumb';
+import { CommentFileThumb } from '@/components/ui/comment-file-thumb';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toApiError } from '@/lib/api-error';
 import { formatDate, formatDateTime, formatDuration, formatTime } from '@/lib/format';
 import { ChecklistTaskExecutionDto } from '@/types/api';
-
-interface UploadedEvidence {
-  id: string;
-  fileName: string;
-}
 
 function TaskCommentsModal({
   instanceId,
@@ -45,16 +39,20 @@ function TaskCommentsModal({
   const commentsQuery = useTaskComments(instanceId, taskExecutionId);
   const addComment = useAddTaskComment();
   const [text, setText] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const comments = commentsQuery.data ?? [];
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!text.trim()) return;
+    if (!text.trim() && !file) return;
     setError(null);
     try {
-      await addComment.mutateAsync({ instanceId, taskExecutionId, text: text.trim() });
+      await addComment.mutateAsync({ instanceId, taskExecutionId, text: text.trim() || null, file });
       setText('');
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       setError(toApiError(err).message);
     }
@@ -92,7 +90,12 @@ function TaskCommentsModal({
                 <b>{c.authorName}</b>
                 <span className="muted">{formatDateTime(c.createdAt)}</span>
               </div>
-              <p style={{ fontSize: 13, margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{c.text}</p>
+              {c.text && <p style={{ fontSize: 13, margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{c.text}</p>}
+              {c.fileName && (
+                <div style={{ marginTop: 6 }}>
+                  <CommentFileThumb commentId={c.id} fileName={c.fileName} />
+                </div>
+              )}
             </div>
           ))}
           {!commentsQuery.isLoading && comments.length === 0 && (
@@ -110,11 +113,37 @@ function TaskCommentsModal({
             rows={3}
             style={{ width: '100%', resize: 'vertical' }}
           />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic"
+              style={{ display: 'none' }}
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>
+              {file ? 'Trocar arquivo' : '+ Anexar arquivo'}
+            </button>
+            {file && (
+              <span className="muted" style={{ fontSize: 12 }}>
+                {file.name}{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFile(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                >
+                  remover
+                </button>
+              </span>
+            )}
+          </div>
           <div className="form-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose}>
               Fechar
             </button>
-            <button className="btn btn-primary" disabled={addComment.isPending || !text.trim()}>
+            <button className="btn btn-primary" disabled={addComment.isPending || (!text.trim() && !file)}>
               {addComment.isPending ? 'Enviando…' : 'Comentar'}
             </button>
           </div>
@@ -138,13 +167,10 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   const restartTaskMutation = useRestartTask();
   const assignTaskMutation = useAssignTask();
   const deleteInstanceMutation = useDeleteInstance();
-  const uploadEvidenceMutation = useUploadEvidence();
   const assignableUsersQuery = useUsers({ active: true }, canManage);
   const [error, setError] = useState<string | null>(null);
-  const [uploadedByTask, setUploadedByTask] = useState<Record<string, UploadedEvidence[]>>({});
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [commentsModalTask, setCommentsModalTask] = useState<ChecklistTaskExecutionDto | null>(null);
-  const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const instance = instanceQuery.data;
   const assignableUsers = assignableUsersQuery.data ?? [];
@@ -246,19 +272,6 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
     );
   }
 
-  async function onUpload(taskExecutionId: string, file: File) {
-    setError(null);
-    try {
-      const res = await uploadEvidenceMutation.mutateAsync({ instanceId: id, taskExecutionId, file });
-      setUploadedByTask((prev) => ({
-        ...prev,
-        [taskExecutionId]: [...(prev[taskExecutionId] ?? []), { id: res.id, fileName: res.fileName }]
-      }));
-    } catch (err) {
-      setError(toApiError(err).message);
-    }
-  }
-
   const allTasksDone = instance.taskExecutions.every((t) => t.status === 'Completed' || t.status === 'Reviewed');
   const reviewedCount = instance.taskExecutions.filter((t) => t.status === 'Reviewed').length;
 
@@ -293,41 +306,6 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => setCommentsModalTask(t)}>
             Comentários{t.commentCount > 0 ? ` (${t.commentCount})` : ''}
           </button>
-        </td>
-        <td>
-          <div className="evidence-list">
-            {(uploadedByTask[t.id] ?? []).map((ev) => (
-              <EvidenceThumb key={ev.id} evidenceId={ev.id} fileName={ev.fileName} />
-            ))}
-            {t.evidenceCount > (uploadedByTask[t.id]?.length ?? 0) && (
-              <span className="muted" style={{ fontSize: 11 }}>
-                +{t.evidenceCount - (uploadedByTask[t.id]?.length ?? 0)} arquivo(s) anteriores
-              </span>
-            )}
-            <input
-              ref={(el) => {
-                fileInputs.current[t.id] = el;
-              }}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) onUpload(t.id, file);
-                e.target.value = '';
-              }}
-            />
-            {t.status === 'InProgress' && (
-              <button
-                className="btn btn-secondary btn-sm"
-                type="button"
-                onClick={() => fileInputs.current[t.id]?.click()}
-                disabled={uploadEvidenceMutation.isPending}
-              >
-                + Foto
-              </button>
-            )}
-          </div>
         </td>
         <td>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -465,7 +443,6 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
               <th>Duração est.</th>
               <th>Status</th>
               <th>Comentários</th>
-              <th>Evidência</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -476,7 +453,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
               ) : (
                 <Fragment key={group.taskId}>
                   <tr className="task-group-header">
-                    <td colSpan={8}>
+                    <td colSpan={7}>
                       <button type="button" className="task-group-toggle" onClick={() => toggleGroup(group.taskId)}>
                         <span>{collapsedGroups.has(group.taskId) ? '▸' : '▾'}</span>
                         <b>{group.taskName}</b>

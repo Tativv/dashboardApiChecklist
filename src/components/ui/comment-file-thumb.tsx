@@ -1,14 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { fetchEvidenceBlobUrl } from '@/features/checklist-instances/api';
+import { fetchTaskCommentFileBlobUrl } from '@/features/checklist-instances/api';
 
-export function EvidenceThumb({ evidenceId, fileName }: { evidenceId: string; fileName: string }) {
+export function CommentFileThumb({ commentId, fileName }: { commentId: string; fileName: string }) {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let objectUrl: string | null = null;
     let cancelled = false;
-    fetchEvidenceBlobUrl(evidenceId).then((u) => {
+    fetchTaskCommentFileBlobUrl(commentId).then((u) => {
       if (cancelled) {
         URL.revokeObjectURL(u);
         return;
@@ -20,7 +20,7 @@ export function EvidenceThumb({ evidenceId, fileName }: { evidenceId: string; fi
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [evidenceId]);
+  }, [commentId]);
 
   if (!url) return <div className="evidence-thumb loading" />;
   return (

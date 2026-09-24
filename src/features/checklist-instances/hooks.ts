@@ -142,8 +142,17 @@ export function useTaskComments(instanceId: string, taskExecutionId: string, ena
 export function useAddTaskComment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ instanceId, taskExecutionId, text }: { instanceId: string; taskExecutionId: string; text: string }) =>
-      api.addTaskComment(instanceId, taskExecutionId, text),
+    mutationFn: ({
+      instanceId,
+      taskExecutionId,
+      text,
+      file
+    }: {
+      instanceId: string;
+      taskExecutionId: string;
+      text?: string | null;
+      file?: File | null;
+    }) => api.addTaskComment(instanceId, taskExecutionId, { text, file }),
     onSuccess: (_data, { instanceId, taskExecutionId }) => {
       qc.invalidateQueries({ queryKey: [...KEY, instanceId, 'tasks', taskExecutionId, 'comments'] });
       qc.invalidateQueries({ queryKey: [...KEY, instanceId] });
@@ -175,23 +184,5 @@ export function useMyAssignedTasks(date?: string) {
   return useQuery({
     queryKey: ['my-assigned-tasks', date],
     queryFn: () => api.getMyAssignedTasks(date)
-  });
-}
-
-export function useUploadEvidence() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      instanceId,
-      taskExecutionId,
-      file
-    }: {
-      instanceId: string;
-      taskExecutionId: string;
-      file: File;
-    }) => api.uploadEvidence(instanceId, taskExecutionId, file),
-    onSuccess: (_data, { instanceId }) => {
-      qc.invalidateQueries({ queryKey: [...KEY, instanceId] });
-    }
   });
 }
