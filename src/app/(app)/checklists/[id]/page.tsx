@@ -114,7 +114,7 @@ function TaskCommentsModal({
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const comments = commentsQuery.data ?? [];
+  const comments = [...(commentsQuery.data ?? [])].reverse();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
