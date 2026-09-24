@@ -50,3 +50,10 @@ export function isExactlySupervisor(role: UserRole | undefined): boolean {
 export function isManagerOrAbove(role: UserRole | undefined): boolean {
   return role === 'Directoria' || role === 'Gerencia';
 }
+
+const roleRank: Record<UserRole, number> = { Colaborador: 0, Supervisor: 1, Gerencia: 2, Directoria: 3 };
+
+export function outranksOrEquals(actingRole: UserRole | undefined, requiredRole: UserRole): boolean {
+  if (!actingRole) return false;
+  return roleRank[actingRole] >= roleRank[requiredRole];
+}

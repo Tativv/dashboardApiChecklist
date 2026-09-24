@@ -10,10 +10,11 @@ import {
 } from '@/features/templates/hooks';
 import { useAreas } from '@/features/areas/hooks';
 import { useAssets } from '@/features/assets/hooks';
-import { useAuthStore, isSupervisorOrAbove } from '@/features/auth/store';
+import { useAuthStore, isSupervisorOrAbove, outranksOrEquals } from '@/features/auth/store';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { RequireRole } from '@/components/ui/require-role';
 import { ScheduleEditor, emptySchedule } from '@/components/ui/schedule-editor';
+import { roleLabel } from '@/components/ui/status-badge';
 import { toApiError } from '@/lib/api-error';
 import { ChecklistTaskInput, ChecklistTemplateListItemDto, ScheduleInput, TaskExecutionMode } from '@/types/api';
 
@@ -452,30 +453,43 @@ export default function TemplatesPage() {
               <th>Tarefas</th>
               <th>Ativos</th>
               <th>Duração</th>
+              <th>Criado por</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {(templates.data ?? []).map((t) => (
-              <tr key={t.id}>
-                <td>
-                  <b>{t.name}</b>
-                </td>
-                <td>{areaName(t.areaId)}</td>
-                <td>{t.scheduleCount} horário{t.scheduleCount === 1 ? '' : 's'}</td>
-                <td>{t.taskCount} tarefas</td>
-                <td>{t.assetCount ?? 0} ativos</td>
-                <td>{t.estimatedDurationMinutes} min</td>
-                <td className="actions">
-                  <button onClick={() => setEditing(t.id)}>Editar</button>
-                  <button onClick={() => setConfiguringId(t.id)}>Configurar ativos</button>
-                  <button onClick={() => onDelete(t)}>Excluir</button>
-                </td>
-              </tr>
-            ))}
+            {(templates.data ?? []).map((t) => {
+              const canModify = outranksOrEquals(user?.role, t.createdByRole);
+              return (
+                <tr key={t.id}>
+                  <td>
+                    <b>{t.name}</b>
+                  </td>
+                  <td>{areaName(t.areaId)}</td>
+                  <td>{t.scheduleCount} horário{t.scheduleCount === 1 ? '' : 's'}</td>
+                  <td>{t.taskCount} tarefas</td>
+                  <td>{t.assetCount ?? 0} ativos</td>
+                  <td>{t.estimatedDurationMinutes} min</td>
+                  <td className="muted">{roleLabel(t.createdByRole)}</td>
+                  <td className="actions">
+                    {canModify ? (
+                      <>
+                        <button onClick={() => setEditing(t.id)}>Editar</button>
+                        <button onClick={() => setConfiguringId(t.id)}>Configurar ativos</button>
+                        <button onClick={() => onDelete(t)}>Excluir</button>
+                      </>
+                    ) : (
+                      <span className="muted" style={{ fontSize: 12 }}>
+                        Somente {roleLabel(t.createdByRole)}+
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
             {templates.isLoading && (
               <tr>
-                <td colSpan={7} className="muted">
+                <td colSpan={8} className="muted">
                   Carregando…
                 </td>
               </tr>
