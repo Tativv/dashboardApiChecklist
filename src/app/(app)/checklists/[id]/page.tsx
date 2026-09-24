@@ -1,5 +1,5 @@
 'use client';
-import { Fragment, use, useMemo, useRef, useState } from 'react';
+import { use, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, isSupervisorOrAbove } from '@/features/auth/store';
@@ -355,38 +355,43 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   const allTasksDone = instance.taskExecutions.every((t) => t.status === 'Completed' || t.status === 'Reviewed');
   const reviewedCount = instance.taskExecutions.filter((t) => t.status === 'Reviewed').length;
 
-  function renderTaskRow(t: ChecklistTaskExecutionDto, indent: boolean) {
+  function renderTaskCard(t: ChecklistTaskExecutionDto, nested: boolean) {
+    const done = t.status === 'Completed' || t.status === 'Reviewed';
+    const canEditAssignment =
+      canManage && (instance!.status === 'Pending' || instance!.status === 'InProgress') && t.status !== 'Reviewed';
+
     return (
-      <tr key={t.id} className={t.status === 'Completed' || t.status === 'Reviewed' ? 'task-row completed' : 'task-row'}>
-        <td style={indent ? { paddingLeft: 28, color: 'var(--muted)' } : undefined}>{indent ? '↳' : t.taskName}</td>
-        <td className="muted">{t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Contínua'}</td>
-        <td>
-          {canManage && (instance!.status === 'Pending' || instance!.status === 'InProgress') && t.status !== 'Reviewed' ? (
-            <SearchableSelect
-              className="btn btn-secondary btn-sm"
-              value={t.assignedUserId ?? ''}
-              disabled={assignTaskMutation.isPending}
-              onChange={(v) => onAssignTask(t.id, v)}
-              placeholder="Não designado"
-              options={assignableUsers.map((c) => ({ value: c.id, label: c.name }))}
-            />
-          ) : (
-            <span className="muted">{assignedUserName(t)}</span>
-          )}
-        </td>
-        <td>
+      <div key={t.id} className={'task-card' + (nested ? ' task-card-nested' : '') + (done ? ' completed' : '')}>
+        <div className="task-card-top">
+          <span className={'task-card-title' + (nested ? ' muted' : '')}>
+            {nested ? (t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Contínua') : t.taskName}
+          </span>
           <TaskExecutionStatusBadge status={t.status} />
-        </td>
-        <td>
-          <button type="button" className="icon-btn" title="Ver detalhes" onClick={() => setDetailTask(t)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </button>
-        </td>
-        <td>
+        </div>
+        <div className="task-card-bottom">
+          <div className="task-card-meta">
+            {!nested && <span>{t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Contínua'}</span>}
+            {!nested && <span>·</span>}
+            {canEditAssignment ? (
+              <SearchableSelect
+                className="btn btn-secondary btn-sm"
+                value={t.assignedUserId ?? ''}
+                disabled={assignTaskMutation.isPending}
+                onChange={(v) => onAssignTask(t.id, v)}
+                placeholder="Não designado"
+                options={assignableUsers.map((c) => ({ value: c.id, label: c.name }))}
+              />
+            ) : (
+              <span>{assignedUserName(t)}</span>
+            )}
+          </div>
           <div className="task-actions">
+            <button type="button" className="icon-btn" title="Ver detalhes" onClick={() => setDetailTask(t)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
             <button
               type="button"
               className="icon-btn"
@@ -432,7 +437,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                 Revisar
               </button>
             )}
-            {(t.status === 'Completed' || t.status === 'Reviewed') && canManage && (
+            {done && canManage && (
               <button
                 className="btn btn-secondary btn-sm"
                 disabled={restartTaskMutation.isPending}
@@ -443,8 +448,8 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
               </button>
             )}
           </div>
-        </td>
-      </tr>
+        </div>
+      </div>
     );
   }
 
@@ -527,39 +532,25 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      <div className="table-wrap" style={{ marginTop: 12 }}>
-        <table className="table task-table">
-          <thead>
-            <tr>
-              <th>Tarefa</th>
-              <th>Horário</th>
-              <th>Designado a</th>
-              <th>Status</th>
-              <th></th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {taskGroups.map((group) =>
-              group.items.length === 1 ? (
-                renderTaskRow(group.items[0], false)
-              ) : (
-                <Fragment key={group.taskId}>
-                  <tr className="task-group-header">
-                    <td colSpan={6}>
-                      <button type="button" className="task-group-toggle" onClick={() => toggleGroup(group.taskId)}>
-                        <span>{collapsedGroups.has(group.taskId) ? '▸' : '▾'}</span>
-                        <b>{group.taskName}</b>
-                        <span className="badge">{group.items.length} horários</span>
-                      </button>
-                    </td>
-                  </tr>
-                  {!collapsedGroups.has(group.taskId) && group.items.map((t) => renderTaskRow(t, true))}
-                </Fragment>
-              )
-            )}
-          </tbody>
-        </table>
+      <div className="task-list" style={{ marginTop: 12 }}>
+        {taskGroups.map((group) =>
+          group.items.length === 1 ? (
+            renderTaskCard(group.items[0], false)
+          ) : (
+            <div key={group.taskId} className="task-card-group">
+              <button type="button" className="task-card-group-header" onClick={() => toggleGroup(group.taskId)}>
+                <span className="caret">{collapsedGroups.has(group.taskId) ? '▸' : '▾'}</span>
+                <b>{group.taskName}</b>
+                <span className="badge">{group.items.length} horários</span>
+              </button>
+              {!collapsedGroups.has(group.taskId) && (
+                <div className="task-card-group-body">
+                  {group.items.map((t) => renderTaskCard(t, true))}
+                </div>
+              )}
+            </div>
+          )
+        )}
       </div>
 
       {commentsModalTask && (
