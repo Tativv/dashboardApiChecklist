@@ -25,6 +25,80 @@ import { toApiError } from '@/lib/api-error';
 import { formatDate, formatDateTime, formatDuration, formatTime } from '@/lib/format';
 import { ChecklistTaskExecutionDto } from '@/types/api';
 
+function DetailField({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 14, marginTop: 2 }}>{value}</div>
+    </div>
+  );
+}
+
+function TaskDetailModal({
+  task,
+  assignedUserName,
+  onClose
+}: {
+  task: ChecklistTaskExecutionDto;
+  assignedUserName: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.6)',
+        zIndex: 100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="panel"
+        style={{ width: '100%', maxWidth: 520, maxHeight: '85vh', overflowY: 'auto', margin: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="card-title" style={{ marginBottom: 0 }}>
+          {task.taskName}
+        </h2>
+        <p className="card-sub">Detalhes da tarefa</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 10 }}>
+          <DetailField label="Status" value={<TaskExecutionStatusBadge status={task.status} />} />
+          <DetailField label="Horário" value={task.scheduledForUtc ? formatTime(task.scheduledForUtc) : 'Contínua'} />
+          <DetailField
+            label="Duração estimada"
+            value={task.estimatedDurationMinutes ? `${task.estimatedDurationMinutes} min` : '—'}
+          />
+          <DetailField label="Designado a" value={assignedUserName} />
+          <DetailField label="Início" value={task.startedAt ? formatDateTime(task.startedAt) : '—'} />
+          <DetailField label="Término" value={task.completedAt ? formatDateTime(task.completedAt) : '—'} />
+          <DetailField label="Duração" value={formatDuration(task.durationSeconds)} />
+          <DetailField label="Comentários registrados" value={String(task.commentCount)} />
+        </div>
+        {task.comment && (
+          <div style={{ marginTop: 18 }}>
+            <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
+              Comentário
+            </div>
+            <p style={{ fontSize: 14, marginTop: 4, whiteSpace: 'pre-wrap' }}>{task.comment}</p>
+          </div>
+        )}
+        <div className="form-actions">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TaskCommentsModal({
   instanceId,
   taskExecutionId,
@@ -171,6 +245,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   const [error, setError] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [commentsModalTask, setCommentsModalTask] = useState<ChecklistTaskExecutionDto | null>(null);
+  const [detailTask, setDetailTask] = useState<ChecklistTaskExecutionDto | null>(null);
 
   const instance = instanceQuery.data;
   const assignableUsers = assignableUsersQuery.data ?? [];
@@ -218,6 +293,11 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
 
   function canCompleteTask(t: ChecklistTaskExecutionDto): boolean {
     return canManage || t.assignedUserId === user?.id;
+  }
+
+  function assignedUserName(t: ChecklistTaskExecutionDto): string {
+    if (!t.assignedUserId) return 'Não designado';
+    return assignableUserNameById.get(t.assignedUserId) ?? (t.assignedUserId === user?.id ? 'Você' : 'Designada');
   }
 
   function toggleGroup(taskId: string) {
@@ -281,7 +361,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
         <td style={indent ? { paddingLeft: 28, color: 'var(--muted)' } : undefined}>{indent ? '↳' : t.taskName}</td>
         <td className="muted">{t.scheduledForUtc ? formatTime(t.scheduledForUtc) : 'Contínua'}</td>
         <td>
-          {canManage && (instance!.status === 'Pending' || instance!.status === 'InProgress') ? (
+          {canManage && (instance!.status === 'Pending' || instance!.status === 'InProgress') && t.status !== 'Reviewed' ? (
             <SearchableSelect
               className="btn btn-secondary btn-sm"
               value={t.assignedUserId ?? ''}
@@ -291,16 +371,19 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
               options={assignableUsers.map((c) => ({ value: c.id, label: c.name }))}
             />
           ) : (
-            <span className="muted">
-              {t.assignedUserId
-                ? (assignableUserNameById.get(t.assignedUserId) ?? (t.assignedUserId === user?.id ? 'Você' : 'Designada'))
-                : 'Não designado'}
-            </span>
+            <span className="muted">{assignedUserName(t)}</span>
           )}
         </td>
-        <td className="muted">{t.estimatedDurationMinutes ? `${t.estimatedDurationMinutes} min` : '—'}</td>
         <td>
           <TaskExecutionStatusBadge status={t.status} />
+        </td>
+        <td>
+          <button type="button" className="icon-btn" title="Ver detalhes" onClick={() => setDetailTask(t)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
         </td>
         <td>
           <button
@@ -453,8 +536,8 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
               <th>Tarefa</th>
               <th>Horário</th>
               <th>Designado a</th>
-              <th>Duração est.</th>
               <th>Status</th>
+              <th></th>
               <th>Comentários</th>
               <th>Ações</th>
             </tr>
@@ -489,6 +572,10 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
           taskName={commentsModalTask.taskName}
           onClose={() => setCommentsModalTask(null)}
         />
+      )}
+
+      {detailTask && (
+        <TaskDetailModal task={detailTask} assignedUserName={assignedUserName(detailTask)} onClose={() => setDetailTask(null)} />
       )}
     </div>
   );
