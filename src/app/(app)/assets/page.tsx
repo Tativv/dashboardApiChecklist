@@ -4,6 +4,7 @@ import { useAssets, useCreateAsset, useUpdateAsset, useDeleteAsset } from '@/fea
 import { useAreas } from '@/features/areas/hooks';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { RequireRole } from '@/components/ui/require-role';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toApiError } from '@/lib/api-error';
 import { AssetDto } from '@/types/api';
 
@@ -53,24 +54,24 @@ function AssetForm({ initial, onClose }: { initial?: AssetDto; onClose: () => vo
           </div>
           <div className="field">
             <label>Área</label>
-            <select value={areaId} onChange={(e) => setAreaId(e.target.value)}>
-              <option value="" disabled>
-                Selecione uma área
-              </option>
-              {(areas.data ?? []).map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={areaId}
+              onChange={setAreaId}
+              placeholder="Selecione uma área"
+              options={(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+            />
           </div>
           {initial && (
             <div className="field">
               <label>Status</label>
-              <select value={active ? 'true' : 'false'} onChange={(e) => setActive(e.target.value === 'true')}>
-                <option value="true">Ativo</option>
-                <option value="false">Inativo</option>
-              </select>
+              <SearchableSelect
+                value={active ? 'true' : 'false'}
+                onChange={(v) => setActive(v === 'true')}
+                options={[
+                  { value: 'true', label: 'Ativo' },
+                  { value: 'false', label: 'Inativo' }
+                ]}
+              />
             </div>
           )}
         </div>
@@ -124,14 +125,13 @@ export default function AssetsPage() {
       {editing && <AssetForm initial={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}
 
       <div className="toolbar">
-        <select className="btn btn-secondary" value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
-          <option value="">Todas as áreas</option>
-          {(areas.data ?? []).map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
+        <SearchableSelect
+          className="btn btn-secondary"
+          value={areaFilter}
+          onChange={setAreaFilter}
+          placeholder="Todas as áreas"
+          options={[{ value: '', label: 'Todas as áreas' }, ...(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))]}
+        />
       </div>
 
       <div className="table-wrap">

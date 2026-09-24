@@ -7,6 +7,7 @@ import { getInstance } from '@/features/checklist-instances/api';
 import { useUsers } from '@/features/users/hooks';
 import { RequireRole } from '@/components/ui/require-role';
 import { ErrorBanner } from '@/components/ui/error-banner';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toApiError } from '@/lib/api-error';
 import { todayIso } from '@/lib/format';
 import { buildByAreaReportPdf, buildByDateReportPdf, buildFullDailySummaryPdf, downloadPdf, getPdfPreviewUrl, GeneratedPdf } from '@/lib/pdf';
@@ -174,14 +175,12 @@ function DailySummaryPanel({ onPreview }: { onPreview: (pdf: GeneratedPdf) => vo
   return (
     <div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <select value={areaId} onChange={(e) => setAreaId(e.target.value)}>
-          <option value="">Todas as áreas</option>
-          {(areas.data ?? []).map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
+        <SearchableSelect
+          value={areaId}
+          onChange={setAreaId}
+          placeholder="Todas as áreas"
+          options={[{ value: '', label: 'Todas as áreas' }, ...(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))]}
+        />
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <button
           type="button"

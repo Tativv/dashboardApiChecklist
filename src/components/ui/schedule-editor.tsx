@@ -1,5 +1,6 @@
 'use client';
 import { DayOfWeekName, ScheduleFrequencyType, ScheduleInput } from '@/types/api';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 
 const frequencyOptions: { value: ScheduleFrequencyType; label: string }[] = [
   { value: 'Daily', label: 'Diária' },
@@ -46,18 +47,11 @@ export function ScheduleEditor({
     <div>
       {schedules.map((s, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select
+          <SearchableSelect
             value={s.frequencyType}
-            onChange={(e) =>
-              updateAt(i, { frequencyType: e.target.value as ScheduleFrequencyType, weekDay: null, dayOfMonth: null })
-            }
-          >
-            {frequencyOptions.map((f) => (
-              <option key={f.value} value={f.value}>
-                {f.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => updateAt(i, { frequencyType: v as ScheduleFrequencyType, weekDay: null, dayOfMonth: null })}
+            options={frequencyOptions}
+          />
 
           <span className="muted" style={{ fontSize: 12 }}>
             a cada
@@ -71,16 +65,12 @@ export function ScheduleEditor({
           />
 
           {s.frequencyType === 'Weekly' && (
-            <select value={s.weekDay ?? ''} onChange={(e) => updateAt(i, { weekDay: e.target.value as DayOfWeekName })}>
-              <option value="" disabled>
-                Dia da semana
-              </option>
-              {weekDayOptions.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={s.weekDay ?? ''}
+              onChange={(v) => updateAt(i, { weekDay: v as DayOfWeekName })}
+              placeholder="Dia da semana"
+              options={weekDayOptions}
+            />
           )}
 
           {s.frequencyType === 'Monthly' && (

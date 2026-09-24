@@ -15,6 +15,7 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { RequireRole } from '@/components/ui/require-role';
 import { ScheduleEditor, emptySchedule } from '@/components/ui/schedule-editor';
 import { roleLabel } from '@/components/ui/status-badge';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toApiError } from '@/lib/api-error';
 import { ChecklistTaskInput, ChecklistTemplateListItemDto, ScheduleInput, TaskExecutionMode } from '@/types/api';
 
@@ -165,16 +166,12 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
           </div>
           <div className="field">
             <label>Setor</label>
-            <select value={form.areaId} onChange={(e) => setForm((f) => ({ ...f, areaId: e.target.value }))}>
-              <option value="" disabled>
-                Selecione o Setor
-              </option>
-              {(areas.data ?? []).map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={form.areaId}
+              onChange={(v) => setForm((f) => ({ ...f, areaId: v }))}
+              placeholder="Selecione o Setor"
+              options={(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+            />
           </div>
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label>Descrição</label>

@@ -100,6 +100,15 @@ export interface ChecklistTaskExecutionDto {
   approvedByUserId?: string | null;
   approvedAt?: string | null;
   evidenceCount: number;
+  commentCount: number;
+}
+
+export interface TaskCommentDto {
+  id: string;
+  authorUserId: string;
+  authorName: string;
+  createdAt: string;
+  text: string;
 }
 
 export interface UpcomingOccurrenceDto {

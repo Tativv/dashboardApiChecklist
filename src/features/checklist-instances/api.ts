@@ -4,6 +4,7 @@ import {
   ChecklistInstanceListItemDto,
   ChecklistStatus,
   MyAssignedTaskItemDto,
+  TaskCommentDto,
   UpcomingOccurrenceDto
 } from '@/types/api';
 
@@ -74,6 +75,21 @@ export async function completeTask(instanceId: string, taskExecutionId: string, 
 
 export async function reviewTask(instanceId: string, taskExecutionId: string) {
   const { data } = await http.post(`/checklist-instances/${instanceId}/tasks/${taskExecutionId}/review`);
+  return data;
+}
+
+export async function restartTask(instanceId: string, taskExecutionId: string) {
+  const { data } = await http.post(`/checklist-instances/${instanceId}/tasks/${taskExecutionId}/restart`);
+  return data;
+}
+
+export async function listTaskComments(instanceId: string, taskExecutionId: string): Promise<TaskCommentDto[]> {
+  const { data } = await http.get<TaskCommentDto[]>(`/checklist-instances/${instanceId}/tasks/${taskExecutionId}/comments`);
+  return data;
+}
+
+export async function addTaskComment(instanceId: string, taskExecutionId: string, text: string): Promise<TaskCommentDto> {
+  const { data } = await http.post<TaskCommentDto>(`/checklist-instances/${instanceId}/tasks/${taskExecutionId}/comments`, { text });
   return data;
 }
 

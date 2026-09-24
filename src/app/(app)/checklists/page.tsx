@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
 import { useAuthStore, isSupervisorOrAbove, isExactlySupervisor } from '@/features/auth/store';
 import { useInstances, useCreateInstance, useGenerateScheduled, useDeleteInstance } from '@/features/checklist-instances/hooks';
 import { useTemplates } from '@/features/templates/hooks';
@@ -9,6 +8,7 @@ import { useAssets } from '@/features/assets/hooks';
 import { useAreas } from '@/features/areas/hooks';
 import { StatusBadge, isOverdue } from '@/components/ui/status-badge';
 import { ErrorBanner } from '@/components/ui/error-banner';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toApiError } from '@/lib/api-error';
 import { formatDate, formatDuration, todayIso } from '@/lib/format';
 import { ChecklistStatus } from '@/types/api';
@@ -21,29 +21,24 @@ const statusLabels: Record<string, string> = {
   Completed: 'Concluído'
 };
 
-interface CreateForm {
-  templateId: string;
-  assetId: string;
-  date: string;
-}
-
 function CreateInstancePanel({ onClose }: { onClose: () => void }) {
   const templates = useTemplates();
   const assets = useAssets();
   const createInstance = useCreateInstance();
   const [error, setError] = useState<string | null>(null);
-  const { register, handleSubmit } = useForm<CreateForm>({
-    defaultValues: { templateId: '', assetId: '', date: todayIso() }
-  });
+  const [templateId, setTemplateId] = useState('');
+  const [assetId, setAssetId] = useState('');
+  const [date, setDate] = useState(todayIso());
 
-  async function onSubmit(values: CreateForm) {
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
     setError(null);
-    if (!values.templateId || !values.assetId) {
+    if (!templateId || !assetId) {
       setError('Selecione um template e um ativo.');
       return;
     }
     try {
-      await createInstance.mutateAsync(values);
+      await createInstance.mutateAsync({ templateId, assetId, date });
       onClose();
     } catch (err) {
       setError(toApiError(err).message);
@@ -55,37 +50,29 @@ function CreateInstancePanel({ onClose }: { onClose: () => void }) {
       <h2 className="card-title">Criar checklist manual</h2>
       <p className="card-sub">Gera uma instância a partir de um template para um ativo.</p>
       <ErrorBanner message={error} />
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={onSubmit}>
         <div className="form-grid">
           <div className="field">
             <label>Template</label>
-            <select {...register('templateId')} defaultValue="">
-              <option value="" disabled>
-                Selecione um template
-              </option>
-              {(templates.data ?? []).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={templateId}
+              onChange={setTemplateId}
+              placeholder="Selecione um template"
+              options={(templates.data ?? []).map((t) => ({ value: t.id, label: t.name }))}
+            />
           </div>
           <div className="field">
             <label>Ativo</label>
-            <select {...register('assetId')} defaultValue="">
-              <option value="" disabled>
-                Selecione um ativo
-              </option>
-              {(assets.data ?? []).map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={assetId}
+              onChange={setAssetId}
+              placeholder="Selecione um ativo"
+              options={(assets.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+            />
           </div>
           <div className="field">
             <label>Data</label>
-            <input type="date" {...register('date')} />
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
         </div>
         <div className="form-actions">
@@ -177,21 +164,19 @@ export default function ChecklistsPage() {
 
       <div className="toolbar" style={{ flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <select className="btn btn-secondary" value={status} onChange={(e) => setStatus(e.target.value as any)}>
-            {statusOptions.map((s) => (
-              <option key={s} value={s}>
-                {statusLabels[s]}
-              </option>
-            ))}
-          </select>
-          <select className="btn btn-secondary" value={areaId} onChange={(e) => setAreaId(e.target.value)}>
-            <option value="">Todas as áreas</option>
-            {(areas.data ?? []).map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            className="btn btn-secondary"
+            value={status}
+            onChange={(v) => setStatus(v as any)}
+            options={statusOptions.map((s) => ({ value: s, label: statusLabels[s] }))}
+          />
+          <SearchableSelect
+            className="btn btn-secondary"
+            value={areaId}
+            onChange={setAreaId}
+            placeholder="Todas as áreas"
+            options={[{ value: '', label: 'Todas as áreas' }, ...(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))]}
+          />
           <input type="date" className="btn btn-secondary" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           <input type="date" className="btn btn-secondary" value={toDate} onChange={(e) => setToDate(e.target.value)} />
         </div>

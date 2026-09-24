@@ -118,6 +118,39 @@ export function useReviewTask() {
   });
 }
 
+export function useRestartTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ instanceId, taskExecutionId }: { instanceId: string; taskExecutionId: string }) =>
+      api.restartTask(instanceId, taskExecutionId),
+    onSuccess: (_data, { instanceId }) => {
+      qc.invalidateQueries({ queryKey: [...KEY, instanceId] });
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ['my-assigned-tasks'] });
+    }
+  });
+}
+
+export function useTaskComments(instanceId: string, taskExecutionId: string, enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, instanceId, 'tasks', taskExecutionId, 'comments'],
+    queryFn: () => api.listTaskComments(instanceId, taskExecutionId),
+    enabled
+  });
+}
+
+export function useAddTaskComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ instanceId, taskExecutionId, text }: { instanceId: string; taskExecutionId: string; text: string }) =>
+      api.addTaskComment(instanceId, taskExecutionId, text),
+    onSuccess: (_data, { instanceId, taskExecutionId }) => {
+      qc.invalidateQueries({ queryKey: [...KEY, instanceId, 'tasks', taskExecutionId, 'comments'] });
+      qc.invalidateQueries({ queryKey: [...KEY, instanceId] });
+    }
+  });
+}
+
 export function useAssignTask() {
   const qc = useQueryClient();
   return useMutation({

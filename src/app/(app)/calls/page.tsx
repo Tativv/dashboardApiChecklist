@@ -6,6 +6,7 @@ import { useAreas } from '@/features/areas/hooks';
 import { useUsers } from '@/features/users/hooks';
 import { RequireRole } from '@/components/ui/require-role';
 import { ErrorBanner } from '@/components/ui/error-banner';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toApiError } from '@/lib/api-error';
 import { formatDateTime, formatDuration } from '@/lib/format';
 import { CallListItemDto, CallPriority, CallStatus } from '@/types/api';
@@ -47,24 +48,24 @@ function CreateCallForm({ onClose }: { onClose: () => void }) {
         <div className="form-grid">
           <div className="field">
             <label>Área destino</label>
-            <select value={areaId} onChange={(e) => setAreaId(e.target.value)}>
-              <option value="" disabled>
-                Selecione a área
-              </option>
-              {(areas.data ?? []).map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={areaId}
+              onChange={setAreaId}
+              placeholder="Selecione a área"
+              options={(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+            />
           </div>
           <div className="field">
             <label>Prioridade</label>
-            <select value={priority} onChange={(e) => setPriority(e.target.value as CallPriority)}>
-              <option value="Baixa">Baixa</option>
-              <option value="Media">Média</option>
-              <option value="Alta">Alta</option>
-            </select>
+            <SearchableSelect
+              value={priority}
+              onChange={(v) => setPriority(v as CallPriority)}
+              options={[
+                { value: 'Baixa', label: 'Baixa' },
+                { value: 'Media', label: 'Média' },
+                { value: 'Alta', label: 'Alta' }
+              ]}
+            />
           </div>
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label>Assunto</label>
@@ -210,18 +211,14 @@ function CallRow({ call, currentUserId, canManage, assignableUsers, onView, onEr
       <td className="muted">{call.createdByUserName}</td>
       <td>
         {canManage ? (
-          <select
+          <SearchableSelect
             value={call.assignedUserId ?? ''}
             disabled={pending || call.status === 'Finished'}
-            onChange={(e) => run(() => assignCall.mutateAsync({ id: call.id, userId: e.target.value || null }))}
-          >
-            <option value="">Não designado</option>
-            {assignableUsers.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => run(() => assignCall.mutateAsync({ id: call.id, userId: v || null }))}
+            placeholder="Não designado"
+            className="btn btn-secondary btn-sm"
+            options={assignableUsers.map((u) => ({ value: u.id, label: u.name }))}
+          />
         ) : (
           <span className="muted">
             {call.assignedUserId ? (call.assignedUserName ?? 'Designado') : 'Não designado'}
@@ -290,26 +287,35 @@ export default function CallsPage() {
         {creating && <CreateCallForm onClose={() => setCreating(false)} />}
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-          <select value={areaId} onChange={(e) => setAreaId(e.target.value)}>
-            <option value="">Todas as áreas</option>
-            {(areas.data ?? []).map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          <select value={status} onChange={(e) => setStatus(e.target.value as CallStatus | 'Todos')}>
-            <option value="Todos">Todos os status</option>
-            <option value="Open">Aberto</option>
-            <option value="InProgress">Em andamento</option>
-            <option value="Finished">Finalizado</option>
-          </select>
-          <select value={priority} onChange={(e) => setPriority(e.target.value as CallPriority | 'Todas')}>
-            <option value="Todas">Todas as prioridades</option>
-            <option value="Alta">Alta</option>
-            <option value="Media">Média</option>
-            <option value="Baixa">Baixa</option>
-          </select>
+          <SearchableSelect
+            value={areaId}
+            onChange={setAreaId}
+            placeholder="Todas as áreas"
+            className="btn btn-secondary"
+            options={[{ value: '', label: 'Todas as áreas' }, ...(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))]}
+          />
+          <SearchableSelect
+            value={status}
+            onChange={(v) => setStatus(v as CallStatus | 'Todos')}
+            className="btn btn-secondary"
+            options={[
+              { value: 'Todos', label: 'Todos os status' },
+              { value: 'Open', label: 'Aberto' },
+              { value: 'InProgress', label: 'Em andamento' },
+              { value: 'Finished', label: 'Finalizado' }
+            ]}
+          />
+          <SearchableSelect
+            value={priority}
+            onChange={(v) => setPriority(v as CallPriority | 'Todas')}
+            className="btn btn-secondary"
+            options={[
+              { value: 'Todas', label: 'Todas as prioridades' },
+              { value: 'Alta', label: 'Alta' },
+              { value: 'Media', label: 'Média' },
+              { value: 'Baixa', label: 'Baixa' }
+            ]}
+          />
         </div>
 
         <div className="table-wrap">

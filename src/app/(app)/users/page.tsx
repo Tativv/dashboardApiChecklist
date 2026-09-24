@@ -4,6 +4,7 @@ import { useUsers, useCreateUser, useUpdateUser, useDeactivateUser } from '@/fea
 import { useAreas } from '@/features/areas/hooks';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { RequireRole } from '@/components/ui/require-role';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { roleLabel } from '@/components/ui/status-badge';
 import { toApiError } from '@/lib/api-error';
 import { AreaDto, UserDto, UserRole } from '@/types/api';
@@ -69,13 +70,11 @@ function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void
           )}
           <div className="field">
             <label>Perfil</label>
-            <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
-              {roles.map((r) => (
-                <option key={r} value={r}>
-                  {roleLabel(r)}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={role}
+              onChange={(v) => setRole(v as UserRole)}
+              options={roles.map((r) => ({ value: r, label: roleLabel(r) }))}
+            />
           </div>
         </div>
         <div className="field" style={{ marginTop: 12 }}>
