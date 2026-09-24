@@ -303,8 +303,21 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
           <TaskExecutionStatusBadge status={t.status} />
         </td>
         <td>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setCommentsModalTask(t)}>
-            Comentários{t.commentCount > 0 ? ` (${t.commentCount})` : ''}
+          <button
+            type="button"
+            className="icon-btn"
+            disabled={!canCompleteTask(t)}
+            title={
+              !canCompleteTask(t)
+                ? 'Somente o colaborador designado ou um supervisor podem ver os comentários'
+                : 'Comentários'
+            }
+            onClick={() => setCommentsModalTask(t)}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            {t.commentCount > 0 && <span className="icon-badge">{t.commentCount}</span>}
           </button>
         </td>
         <td>

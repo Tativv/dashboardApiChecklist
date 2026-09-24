@@ -63,3 +63,8 @@ a.nav{text-decoration:none}
 .task-group-header td{background:#fafbfc;padding:10px 16px}
 .task-group-toggle{display:flex;align-items:center;gap:9px;border:0;background:none;padding:0;cursor:pointer;font-size:13px;color:var(--ink);font-family:inherit}
 .task-group-toggle span:first-child{width:10px;color:var(--muted);font-size:10px}
+
+.icon-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:1px solid var(--line);border-radius:7px;background:#fff;cursor:pointer;color:#475467;padding:0}
+.icon-btn:hover:not(:disabled){background:#f7f8fa}
+.icon-btn:disabled{opacity:.5;cursor:not-allowed}
+.icon-badge{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;padding:0 3px;border-radius:999px;background:var(--blue);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1}
