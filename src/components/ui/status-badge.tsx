@@ -3,22 +3,18 @@ import { todayIso } from '@/lib/format';
 
 const statusClass: Record<ChecklistStatus, string> = {
   Pending: 'pending',
-  Approved: 'ready',
   InProgress: 'progress',
-  Completed: 'done',
-  Reviewed: 'approved'
+  Completed: 'approved'
 };
 
 export const statusLabel: Record<ChecklistStatus, string> = {
   Pending: 'Pendente',
-  Approved: 'Aprovado',
   InProgress: 'Em andamento',
-  Completed: 'Concluído',
-  Reviewed: 'Revisado'
+  Completed: 'Concluído'
 };
 
 export function isOverdue(status: ChecklistStatus, date: string): boolean {
-  if (status !== 'Pending' && status !== 'Approved' && status !== 'InProgress') return false;
+  if (status !== 'Pending' && status !== 'InProgress') return false;
   return date < todayIso();
 }
 
@@ -63,14 +59,16 @@ export function weekDayLabel(weekDay: DayOfWeekName | string): string {
 
 const taskExecutionStatusClass: Record<TaskExecutionStatus, string> = {
   Pending: 'pending',
+  InProgress: 'progress',
   Completed: 'done',
-  Skipped: 'progress'
+  Reviewed: 'approved'
 };
 
 export const taskExecutionStatusLabel: Record<TaskExecutionStatus, string> = {
   Pending: 'Pendente',
+  InProgress: 'Em andamento',
   Completed: 'Concluída',
-  Skipped: 'Pulada'
+  Reviewed: 'Revisada'
 };
 
 export function TaskExecutionStatusBadge({ status }: { status: TaskExecutionStatus }) {

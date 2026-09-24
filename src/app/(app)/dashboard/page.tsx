@@ -40,7 +40,7 @@ export default function DashboardPage() {
           <K label="Pendentes" value={report ? String(report.pending) : '—'} />
           <K
             label="Concluídos"
-            value={report ? `${report.completed + report.reviewed}/${report.total}` : '—'}
+            value={report ? `${report.completed}/${report.total}` : '—'}
             note={report ? `${report.completionRatePercent}% concluído` : undefined}
           />
           <K label="Duração média" value={report ? formatDuration(report.averageDurationSeconds) : '—'} />
@@ -55,7 +55,7 @@ export default function DashboardPage() {
             <p className="card-sub">Totais de hoje</p>
             {byAreaQuery.isLoading && <p className="muted">Carregando…</p>}
             {byArea.map((a) => {
-              const pct = a.total === 0 ? 0 : Math.round(((a.completed + a.reviewed) * 100) / a.total);
+              const pct = a.total === 0 ? 0 : Math.round((a.completed * 100) / a.total);
               return (
                 <div className="bar-row" key={a.areaId}>
                   <span>{a.areaName}</span>

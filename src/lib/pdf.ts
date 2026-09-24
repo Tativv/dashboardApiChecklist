@@ -161,15 +161,13 @@ export function buildByDateReportPdf(rows: ByDateReportItemDto[], fromDate: stri
   autoTable(ctx.doc, {
     startY: ctx.cursorY,
     margin: { left: MARGIN, right: MARGIN },
-    head: [['Data', 'Total', 'Pendente', 'Aprovado', 'Em andamento', 'Concluído', 'Revisado', 'Duração méd.']],
+    head: [['Data', 'Total', 'Pendente', 'Em andamento', 'Concluído', 'Duração méd.']],
     body: rows.map((r) => [
       formatDate(r.date),
       String(r.total),
       String(r.pending),
-      String(r.approved),
       String(r.inProgress),
       String(r.completed),
-      String(r.reviewed),
       formatDuration(r.averageDurationSeconds)
     ]),
     theme: 'striped',
@@ -189,8 +187,8 @@ export function buildByAreaReportPdf(rows: ByAreaReportItemDto[], fromDate: stri
   autoTable(ctx.doc, {
     startY: ctx.cursorY,
     margin: { left: MARGIN, right: MARGIN },
-    head: [['Área', 'Total', 'Concluído', 'Revisado', 'Duração méd.']],
-    body: rows.map((r) => [r.areaName, String(r.total), String(r.completed), String(r.reviewed), formatDuration(r.averageDurationSeconds)]),
+    head: [['Área', 'Total', 'Pendente', 'Em andamento', 'Concluído', 'Duração méd.']],
+    body: rows.map((r) => [r.areaName, String(r.total), String(r.pending), String(r.inProgress), String(r.completed), formatDuration(r.averageDurationSeconds)]),
     theme: 'striped',
     styles: { fontSize: 9, cellPadding: 7, textColor: COLOR.text, lineColor: COLOR.line, lineWidth: 0.5 },
     headStyles: { fillColor: COLOR.primary, textColor: COLOR.white, fontStyle: 'bold' },

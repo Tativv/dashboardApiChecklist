@@ -1,9 +1,9 @@
 export type UserRole = 'Directoria' | 'Supervisor' | 'Colaborador' | 'Gerencia';
-export type ChecklistStatus = 'Pending' | 'Approved' | 'InProgress' | 'Completed' | 'Reviewed';
+export type ChecklistStatus = 'Pending' | 'InProgress' | 'Completed';
 export type DayOfWeekName = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 export type ScheduleFrequencyType = 'Daily' | 'Weekly' | 'Monthly';
 export type TaskExecutionMode = 'Scheduled' | 'Continuous';
-export type TaskExecutionStatus = 'Pending' | 'Completed' | 'Skipped';
+export type TaskExecutionStatus = 'Pending' | 'InProgress' | 'Completed' | 'Reviewed';
 
 export interface ScheduleInput {
   frequencyType: ScheduleFrequencyType;
@@ -89,7 +89,10 @@ export interface ChecklistTaskExecutionDto {
   order: number;
   status: TaskExecutionStatus;
   scheduledForUtc?: string | null;
-  executedAtUtc?: string | null;
+  estimatedDurationMinutes?: number | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  durationSeconds?: number | null;
   comment?: string | null;
   assignedUserId?: string | null;
   createdByUserId?: string | null;
@@ -149,10 +152,8 @@ export interface MyAssignedTaskItemDto {
 export interface DashboardReportDto {
   total: number;
   pending: number;
-  approved: number;
   inProgress: number;
   completed: number;
-  reviewed: number;
   overdue: number;
   averageDurationSeconds?: number | null;
   completionRatePercent: number;
@@ -162,10 +163,8 @@ export interface ByDateReportItemDto {
   date: string;
   total: number;
   pending: number;
-  approved: number;
   inProgress: number;
   completed: number;
-  reviewed: number;
   averageDurationSeconds?: number | null;
 }
 
@@ -174,10 +173,8 @@ export interface ByAreaReportItemDto {
   areaName: string;
   total: number;
   pending: number;
-  approved: number;
   inProgress: number;
   completed: number;
-  reviewed: number;
   averageDurationSeconds?: number | null;
 }
 

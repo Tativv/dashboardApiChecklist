@@ -49,18 +49,8 @@ export async function getUpcomingOccurrences(from: string, to: string): Promise<
   return data;
 }
 
-export async function startInstance(id: string) {
-  const { data } = await http.post(`/checklist-instances/${id}/start`);
-  return data;
-}
-
 export async function finishInstance(id: string) {
   const { data } = await http.post(`/checklist-instances/${id}/finish`);
-  return data;
-}
-
-export async function approveInstance(id: string) {
-  const { data } = await http.post(`/checklist-instances/${id}/approve`);
   return data;
 }
 
@@ -69,11 +59,12 @@ export async function reopenInstance(id: string, reason?: string) {
   return data;
 }
 
-export async function completeTask(
-  instanceId: string,
-  taskExecutionId: string,
-  input: { completed: boolean; comment?: string | null }
-) {
+export async function startTask(instanceId: string, taskExecutionId: string) {
+  const { data } = await http.post(`/checklist-instances/${instanceId}/tasks/${taskExecutionId}/start`);
+  return data;
+}
+
+export async function completeTask(instanceId: string, taskExecutionId: string, input: { comment?: string | null }) {
   const { data } = await http.post(
     `/checklist-instances/${instanceId}/tasks/${taskExecutionId}/complete`,
     input
@@ -81,12 +72,22 @@ export async function completeTask(
   return data;
 }
 
-export async function assignTask(instanceId: string, taskExecutionId: string, userId: string | null) {
+export async function reviewTask(instanceId: string, taskExecutionId: string) {
+  const { data } = await http.post(`/checklist-instances/${instanceId}/tasks/${taskExecutionId}/review`);
+  return data;
+}
+
+export async function assignTask(
+  instanceId: string,
+  taskExecutionId: string,
+  userId: string | null,
+  estimatedDurationMinutes?: number | null
+) {
   const { data } = await http.post(
     `/checklist-instances/${instanceId}/tasks/${taskExecutionId}/assign`,
-    { userId }
+    { userId, estimatedDurationMinutes: estimatedDurationMinutes ?? null }
   );
-  return data as { id: string; assignedUserId?: string | null; createdByUserId?: string | null };
+  return data as { id: string; assignedUserId?: string | null; createdByUserId?: string | null; estimatedDurationMinutes?: number | null };
 }
 
 export async function getMyAssignedTasks(date?: string): Promise<MyAssignedTaskItemDto[]> {

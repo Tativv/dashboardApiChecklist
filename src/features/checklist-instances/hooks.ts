@@ -58,16 +58,8 @@ function useInstanceAction(fn: (id: string) => Promise<unknown>) {
   });
 }
 
-export function useStartInstance() {
-  return useInstanceAction(api.startInstance);
-}
-
 export function useFinishInstance() {
   return useInstanceAction(api.finishInstance);
-}
-
-export function useApproveInstance() {
-  return useInstanceAction(api.approveInstance);
 }
 
 export function useReopenInstance() {
@@ -77,6 +69,19 @@ export function useReopenInstance() {
     onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: KEY });
       qc.invalidateQueries({ queryKey: [...KEY, id] });
+    }
+  });
+}
+
+export function useStartTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ instanceId, taskExecutionId }: { instanceId: string; taskExecutionId: string }) =>
+      api.startTask(instanceId, taskExecutionId),
+    onSuccess: (_data, { instanceId }) => {
+      qc.invalidateQueries({ queryKey: [...KEY, instanceId] });
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ['my-assigned-tasks'] });
     }
   });
 }
@@ -91,8 +96,21 @@ export function useCompleteTask() {
     }: {
       instanceId: string;
       taskExecutionId: string;
-      input: { completed: boolean; comment?: string | null };
+      input: { comment?: string | null };
     }) => api.completeTask(instanceId, taskExecutionId, input),
+    onSuccess: (_data, { instanceId }) => {
+      qc.invalidateQueries({ queryKey: [...KEY, instanceId] });
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ['my-assigned-tasks'] });
+    }
+  });
+}
+
+export function useReviewTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ instanceId, taskExecutionId }: { instanceId: string; taskExecutionId: string }) =>
+      api.reviewTask(instanceId, taskExecutionId),
     onSuccess: (_data, { instanceId }) => {
       qc.invalidateQueries({ queryKey: [...KEY, instanceId] });
       qc.invalidateQueries({ queryKey: KEY });
@@ -106,12 +124,14 @@ export function useAssignTask() {
     mutationFn: ({
       instanceId,
       taskExecutionId,
-      userId
+      userId,
+      estimatedDurationMinutes
     }: {
       instanceId: string;
       taskExecutionId: string;
       userId: string | null;
-    }) => api.assignTask(instanceId, taskExecutionId, userId),
+      estimatedDurationMinutes?: number | null;
+    }) => api.assignTask(instanceId, taskExecutionId, userId, estimatedDurationMinutes),
     onSuccess: (_data, { instanceId }) => {
       qc.invalidateQueries({ queryKey: [...KEY, instanceId] });
       qc.invalidateQueries({ queryKey: KEY });
