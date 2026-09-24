@@ -439,57 +439,54 @@ export default function TemplatesPage() {
         <ConfigureAssetsPanel templateId={configuringId} onClose={() => setConfiguringId(null)} />
       )}
 
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Setor</th>
-              <th>Horários</th>
-              <th>Tarefas</th>
-              <th>Ativos</th>
-              <th>Criado por</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {(templates.data ?? []).map((t) => {
-              const canModify = outranksOrEquals(user?.role, t.createdByRole);
-              return (
-                <tr key={t.id}>
-                  <td>
-                    <b>{t.name}</b>
-                  </td>
-                  <td>{areaName(t.areaId)}</td>
-                  <td>{t.scheduleCount} horário{t.scheduleCount === 1 ? '' : 's'}</td>
-                  <td>{t.taskCount} tarefas</td>
-                  <td>{t.assetCount ?? 0} ativos</td>
-                  <td className="muted">{roleLabel(t.createdByRole)}</td>
-                  <td className="actions">
-                    {canModify ? (
-                      <>
-                        <button onClick={() => setEditing(t.id)}>Editar</button>
-                        <button onClick={() => setConfiguringId(t.id)}>Configurar ativos</button>
-                        <button onClick={() => onDelete(t)}>Excluir</button>
-                      </>
-                    ) : (
-                      <span className="muted" style={{ fontSize: 12 }}>
-                        Somente {roleLabel(t.createdByRole)}+
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {templates.isLoading && (
-              <tr>
-                <td colSpan={7} className="muted">
-                  Carregando…
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="card-list">
+        {(templates.data ?? []).map((t) => {
+          const canModify = outranksOrEquals(user?.role, t.createdByRole);
+          return (
+            <div className="list-card" key={t.id}>
+              <div className="list-card-top">
+                <span className="list-card-title">{t.name}</span>
+                <span className="badge">{roleLabel(t.createdByRole)}</span>
+              </div>
+              <div className="list-card-bottom">
+                <div className="list-card-meta">
+                  <span>{areaName(t.areaId)}</span>
+                  <span>·</span>
+                  <span>
+                    {t.scheduleCount} horário{t.scheduleCount === 1 ? '' : 's'}
+                  </span>
+                  <span>·</span>
+                  <span>{t.taskCount} tarefas</span>
+                  <span>·</span>
+                  <span>{t.assetCount ?? 0} ativos</span>
+                </div>
+                <div className="task-actions">
+                  {canModify ? (
+                    <>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setEditing(t.id)}>
+                        Editar
+                      </button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setConfiguringId(t.id)}>
+                        Configurar ativos
+                      </button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => onDelete(t)}>
+                        Excluir
+                      </button>
+                    </>
+                  ) : (
+                    <span className="muted" style={{ fontSize: 12 }}>
+                      Somente {roleLabel(t.createdByRole)}+
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {templates.isLoading && <p className="muted">Carregando…</p>}
+        {!templates.isLoading && (templates.data ?? []).length === 0 && (
+          <div className="card empty">Nenhum template cadastrado.</div>
+        )}
       </div>
     </div>
     </RequireRole>
