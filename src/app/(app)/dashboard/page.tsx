@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useAuthStore, isSupervisorOrAbove } from '@/features/auth/store';
-import { useDashboardReport, useByAreaReport } from '@/features/reports/hooks';
+import { useDashboardReport } from '@/features/reports/hooks';
 import { useInstances } from '@/features/checklist-instances/hooks';
 import { StatusBadge, isOverdue } from '@/components/ui/status-badge';
 import { formatDuration, todayIso } from '@/lib/format';
@@ -22,11 +22,11 @@ export default function DashboardPage() {
   const today = todayIso();
 
   const dashboardQuery = useDashboardReport({ today }, canSeeReports);
-  const byAreaQuery = useByAreaReport({ fromDate: today, toDate: today }, canSeeReports);
   const todayInstances = useInstances({ fromDate: today, toDate: today });
 
   const report = dashboardQuery.data;
-  const byArea = byAreaQuery.data ?? [];
+  const tasksDone = report ? report.tasksCompleted + report.tasksReviewed : 0;
+  const tasksCompletionRatePercent = report && report.tasksTotal > 0 ? Math.round((tasksDone * 100) / report.tasksTotal) : 0;
   const list = todayInstances.data ?? [];
 
   return (
@@ -35,58 +35,23 @@ export default function DashboardPage() {
       <p className="page-subtitle">Este é o status operacional do hotel hoje.</p>
 
       {canSeeReports ? (
-        <>
-          <div className="kpis">
-            <K label="Total" value={report ? String(report.total) : '—'} />
-            <K label="Pendentes" value={report ? String(report.pending) : '—'} />
-            <K
-              label="Concluídos"
-              value={report ? `${report.completed}/${report.total}` : '—'}
-              note={report ? `${report.completionRatePercent}% concluído` : undefined}
-            />
-            <K label="Duração média" value={report ? formatDuration(report.averageDurationSeconds) : '—'} />
-            <K label="Vencidos" value={report ? String(report.overdue) : '—'} />
-          </div>
-
-          <h2 className="card-title" style={{ marginTop: 24 }}>
-            Tarefas
-          </h2>
-          <div className="kpis">
-            <K label="Total" value={report ? String(report.tasksTotal) : '—'} />
-            <K label="Pendentes" value={report ? String(report.tasksPending) : '—'} />
-            <K label="Em andamento" value={report ? String(report.tasksInProgress) : '—'} />
-            <K
-              label="Concluídas"
-              value={report ? `${report.tasksCompleted + report.tasksReviewed}/${report.tasksTotal}` : '—'}
-              note={report ? `${report.tasksReviewed} revisadas` : undefined}
-            />
-            <K label="Duração média" value={report ? formatDuration(report.averageTaskDurationSeconds) : '—'} />
-            <K label="Vencidas" value={report ? String(report.tasksOverdue) : '—'} />
-          </div>
-        </>
+        <div className="kpis">
+          <K label="Tarefas" value={report ? String(report.tasksTotal) : '—'} />
+          <K label="Pendentes" value={report ? String(report.tasksPending) : '—'} />
+          <K label="Em andamento" value={report ? String(report.tasksInProgress) : '—'} />
+          <K label="Concluídas" value={report ? String(report.tasksCompleted) : '—'} />
+          <K label="Revisadas" value={report ? String(report.tasksReviewed) : '—'} />
+          <K
+            label="Taxa de conclusão"
+            value={report ? `${tasksCompletionRatePercent}%` : '—'}
+            note={report ? `${tasksDone}/${report.tasksTotal} concluídas` : undefined}
+          />
+          <K label="Duração média" value={report ? formatDuration(report.averageTaskDurationSeconds) : '—'} />
+          <K label="Vencidas" value={report ? String(report.tasksOverdue) : '—'} />
+        </div>
       ) : null}
 
       <div className="grid">
-        {canSeeReports && (
-          <section className="card">
-            <h2 className="card-title">Checklists por área</h2>
-            <p className="card-sub">Totais de hoje</p>
-            {byAreaQuery.isLoading && <p className="muted">Carregando…</p>}
-            {byArea.map((a) => {
-              const pct = a.total === 0 ? 0 : Math.round((a.completed * 100) / a.total);
-              return (
-                <div className="bar-row" key={a.areaId}>
-                  <span>{a.areaName}</span>
-                  <div className="bar">
-                    <i style={{ width: `${pct}%` }} />
-                  </div>
-                  <b>{pct}%</b>
-                </div>
-              );
-            })}
-            {!byAreaQuery.isLoading && byArea.length === 0 && <div className="card empty">Ainda sem dados.</div>}
-          </section>
-        )}
         <section className="card">
           <h2 className="card-title">Checklists de hoje</h2>
           <p className="card-sub">{list.length} programados para hoje</p>

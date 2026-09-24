@@ -22,7 +22,6 @@ interface FormState {
   name: string;
   description: string;
   areaId: string;
-  estimatedDurationMinutes: number;
   executionMode: TaskExecutionMode;
   schedules: ScheduleInput[];
   tasks: ChecklistTaskInput[];
@@ -44,7 +43,6 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
           name: existing.data.name,
           description: existing.data.description ?? '',
           areaId: existing.data.areaId,
-          estimatedDurationMinutes: existing.data.estimatedDurationMinutes,
           executionMode: existing.data.executionMode,
           schedules: existing.data.schedules.map((s) => ({ ...s })),
           tasks: existing.data.tasks.map((t) => ({
@@ -60,7 +58,6 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
           name: '',
           description: '',
           areaId: '',
-          estimatedDurationMinutes: 15,
           executionMode: 'Scheduled',
           schedules: [emptySchedule(0)],
           tasks: []
@@ -135,7 +132,6 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
       name: form.name,
       description: form.description || null,
       areaId: form.areaId,
-      estimatedDurationMinutes: Number(form.estimatedDurationMinutes),
       executionMode: form.executionMode,
       schedules: form.executionMode === 'Scheduled' ? form.schedules : [],
       tasks: form.tasks.map((t) => ({ ...t, description: t.description || null }))
@@ -179,15 +175,6 @@ function TemplateForm({ templateId, onClose }: { templateId?: string; onClose: (
                 </option>
               ))}
             </select>
-          </div>
-          <div className="field">
-            <label>Duração estimada (min)</label>
-            <input
-              type="number"
-              min={1}
-              value={form.estimatedDurationMinutes}
-              onChange={(e) => setForm((f) => ({ ...f, estimatedDurationMinutes: Number(e.target.value) }))}
-            />
           </div>
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label>Descrição</label>
@@ -464,7 +451,6 @@ export default function TemplatesPage() {
               <th>Horários</th>
               <th>Tarefas</th>
               <th>Ativos</th>
-              <th>Duração</th>
               <th>Criado por</th>
               <th></th>
             </tr>
@@ -481,7 +467,6 @@ export default function TemplatesPage() {
                   <td>{t.scheduleCount} horário{t.scheduleCount === 1 ? '' : 's'}</td>
                   <td>{t.taskCount} tarefas</td>
                   <td>{t.assetCount ?? 0} ativos</td>
-                  <td>{t.estimatedDurationMinutes} min</td>
                   <td className="muted">{roleLabel(t.createdByRole)}</td>
                   <td className="actions">
                     {canModify ? (
@@ -501,7 +486,7 @@ export default function TemplatesPage() {
             })}
             {templates.isLoading && (
               <tr>
-                <td colSpan={8} className="muted">
+                <td colSpan={7} className="muted">
                   Carregando…
                 </td>
               </tr>

@@ -65,7 +65,6 @@ export interface ChecklistTemplateDto {
   name: string;
   description?: string | null;
   areaId: string;
-  estimatedDurationMinutes: number;
   executionMode: TaskExecutionMode;
   createdByRole: UserRole;
   schedules: ScheduleDto[];
@@ -77,7 +76,6 @@ export interface ChecklistTemplateListItemDto {
   id: string;
   name: string;
   areaId: string;
-  estimatedDurationMinutes: number;
   scheduleCount: number;
   taskCount: number;
   assetCount: number;

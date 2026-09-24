@@ -5,7 +5,6 @@ export interface TemplateInput {
   name: string;
   description?: string | null;
   areaId: string;
-  estimatedDurationMinutes: number;
   executionMode: TaskExecutionMode;
   schedules: ScheduleInput[];
   tasks: ChecklistTaskInput[];
