@@ -76,7 +76,7 @@ function ensureSpace(ctx: DocContext, needed: number) {
   }
 }
 
-function drawAreaBand(ctx: DocContext, areaName: string, count: number) {
+function drawAreaBand(ctx: DocContext, areaName: string, count: number, unitLabel = 'checklist') {
   ensureSpace(ctx, 34);
   const { doc } = ctx;
   doc.setFillColor(...COLOR.primary);
@@ -88,9 +88,20 @@ function drawAreaBand(ctx: DocContext, areaName: string, count: number) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(203, 213, 225);
-  doc.text(`${count} checklist${count === 1 ? '' : 's'}`, MARGIN + CONTENT_WIDTH - 10, ctx.cursorY + 17, { align: 'right' });
+  doc.text(`${count} ${unitLabel}${count === 1 ? '' : 's'}`, MARGIN + CONTENT_WIDTH - 10, ctx.cursorY + 17, { align: 'right' });
   doc.setTextColor(...COLOR.text);
   ctx.cursorY += 26 + 12;
+}
+
+function drawSectionLabel(ctx: DocContext, label: string) {
+  ensureSpace(ctx, 26);
+  ctx.doc.setFont('helvetica', 'bold');
+  ctx.doc.setFontSize(11.5);
+  ctx.doc.setTextColor(...COLOR.primarySoft);
+  ctx.doc.text(label, MARGIN, ctx.cursorY);
+  ctx.doc.setFont('helvetica', 'normal');
+  ctx.doc.setTextColor(...COLOR.text);
+  ctx.cursorY += 14;
 }
 
 function drawTemplateHeader(ctx: DocContext, templateName: string) {
@@ -406,25 +417,71 @@ const CALL_PRIORITY_LABEL: Record<CallPriority, string> = { Baixa: 'Baixa', Medi
 export function buildCallsReportPdf(calls: CallListItemDto[], fromDate: string, toDate: string): GeneratedPdf {
   const ctx = createDocument('Relatório de Chamados', `Período: ${formatDate(fromDate)} a ${formatDate(toDate)}`);
 
+  const total = calls.length;
+  const finished = calls.filter((c) => c.status === 'Finished').length;
+  const inProgress = calls.filter((c) => c.status === 'InProgress').length;
+  const pending = calls.filter((c) => c.status === 'Open').length;
+
+  drawSectionLabel(ctx, 'Resumo geral');
+
   autoTable(ctx.doc, {
     startY: ctx.cursorY,
     margin: { left: MARGIN, right: MARGIN },
-    head: [['Assunto', 'Área', 'Aberto por', 'Responsável', 'Status', 'Prioridade', 'Aberto em']],
-    body: calls.map((c) => [
-      c.subject,
-      c.areaName,
-      c.createdByUserName,
-      c.assignedUserName ?? '—',
-      CALL_STATUS_LABEL[c.status],
-      CALL_PRIORITY_LABEL[c.priority],
-      formatDate(c.createdAtUtc)
-    ]),
+    head: [['Total', 'Finalizados', 'Em Andamento', 'Pendentes']],
+    body: [[String(total), String(finished), String(inProgress), String(pending)]],
+    theme: 'grid',
+    styles: { fontSize: 12, cellPadding: 10, halign: 'center', textColor: COLOR.text, lineColor: COLOR.line, lineWidth: 0.5, fontStyle: 'bold' },
+    headStyles: { fillColor: COLOR.primary, textColor: COLOR.white, fontStyle: 'bold', halign: 'center' }
+  });
+  ctx.cursorY = (ctx.doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 24;
+
+  const byArea = new Map<string, CallListItemDto[]>();
+  for (const call of calls) {
+    if (!byArea.has(call.areaName)) byArea.set(call.areaName, []);
+    byArea.get(call.areaName)!.push(call);
+  }
+  const sortedAreaNames = [...byArea.keys()].sort((a, b) => a.localeCompare(b));
+
+  drawSectionLabel(ctx, 'Chamados por área');
+
+  autoTable(ctx.doc, {
+    startY: ctx.cursorY,
+    margin: { left: MARGIN, right: MARGIN },
+    head: [['Área', 'Chamados']],
+    body: sortedAreaNames.map((name) => [name, String(byArea.get(name)!.length)]),
     theme: 'striped',
-    styles: { fontSize: 8.5, cellPadding: 6, textColor: COLOR.text, lineColor: COLOR.line, lineWidth: 0.5 },
+    styles: { fontSize: 9.5, cellPadding: 7, textColor: COLOR.text, lineColor: COLOR.line, lineWidth: 0.5 },
     headStyles: { fillColor: COLOR.primary, textColor: COLOR.white, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: COLOR.band },
     columnStyles: { 0: { fontStyle: 'bold' } }
   });
+  ctx.cursorY = (ctx.doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 26;
+
+  for (const areaName of sortedAreaNames) {
+    const areaCalls = byArea.get(areaName)!;
+    drawAreaBand(ctx, areaName, areaCalls.length, 'chamado');
+
+    autoTable(ctx.doc, {
+      startY: ctx.cursorY,
+      margin: { left: MARGIN, right: MARGIN },
+      head: [['Assunto', 'Área', 'Aberto por', 'Responsável', 'Status', 'Prioridade', 'Aberto em']],
+      body: areaCalls.map((c) => [
+        c.subject,
+        c.areaName,
+        c.createdByUserName,
+        c.assignedUserName ?? '—',
+        CALL_STATUS_LABEL[c.status],
+        CALL_PRIORITY_LABEL[c.priority],
+        formatDate(c.createdAtUtc)
+      ]),
+      theme: 'striped',
+      styles: { fontSize: 8.5, cellPadding: 6, textColor: COLOR.text, lineColor: COLOR.line, lineWidth: 0.5 },
+      headStyles: { fillColor: COLOR.primarySoft, textColor: COLOR.white, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: COLOR.band },
+      columnStyles: { 0: { fontStyle: 'bold' } }
+    });
+    ctx.cursorY = (ctx.doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 24;
+  }
 
   drawFooters(ctx.doc);
   return { doc: ctx.doc, filename: `relatorio-chamados_${fromDate}_a_${toDate}.pdf` };
