@@ -1,13 +1,18 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { statusLabel, taskExecutionStatusLabel } from '@/components/ui/status-badge';
+import { statusLabel, taskExecutionStatusLabel, roleLabel } from '@/components/ui/status-badge';
 import { formatDate, formatDuration, formatTime } from '@/lib/format';
+import type { ServiceOrder } from '@/features/control-center/mock';
 import {
   AreaDto,
   ByAreaReportItemDto,
   ByDateReportItemDto,
+  CallListItemDto,
+  CallPriority,
+  CallStatus,
   ChecklistInstanceDetailDto,
   ChecklistInstanceListItemDto,
+  DashboardReportDto,
   UserDto
 } from '@/types/api';
 
@@ -335,4 +340,149 @@ export function buildFullDailySummaryPdf(
     doc: ctx.doc,
     filename: `resumo-diario-completo_${date}${areaFilterLabel ? '_' + areaFilterLabel.replace(/\s+/g, '-') : ''}.pdf`
   };
+}
+
+export function buildOperacionalGeralReportPdf(report: DashboardReportDto, fromDate: string, toDate: string): GeneratedPdf {
+  const ctx = createDocument('Relatório Operacional Geral', `Período: ${formatDate(fromDate)} a ${formatDate(toDate)}`);
+
+  autoTable(ctx.doc, {
+    startY: ctx.cursorY,
+    margin: { left: MARGIN, right: MARGIN },
+    head: [['Indicador', 'Valor']],
+    body: [
+      ['Checklists totais', String(report.total)],
+      ['Taxa de conclusão', `${report.completionRatePercent}%`],
+      ['Checklists pendentes', String(report.pending)],
+      ['Checklists em andamento', String(report.inProgress)],
+      ['Checklists concluídos', String(report.completed)],
+      ['Checklists vencidos', String(report.overdue)],
+      ['Duração média (checklist)', formatDuration(report.averageDurationSeconds)],
+      ['Tarefas totais', String(report.tasksTotal)],
+      ['Tarefas concluídas', String(report.tasksCompleted)],
+      ['Tarefas revisadas', String(report.tasksReviewed)],
+      ['Tarefas vencidas', String(report.tasksOverdue)],
+      ['Duração média (tarefa)', formatDuration(report.averageTaskDurationSeconds)]
+    ],
+    theme: 'striped',
+    styles: { fontSize: 10, cellPadding: 8, textColor: COLOR.text, lineColor: COLOR.line, lineWidth: 0.5 },
+    headStyles: { fillColor: COLOR.primary, textColor: COLOR.white, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: COLOR.band },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 260 } }
+  });
+
+  drawFooters(ctx.doc);
+  return { doc: ctx.doc, filename: `relatorio-operacional-geral_${fromDate}_a_${toDate}.pdf` };
+}
+
+export function buildServiceOrdersReportPdf(serviceOrders: ServiceOrder[], fromDate: string, toDate: string): GeneratedPdf {
+  const ctx = createDocument('Relatório de Ordens de Serviço', `Período: ${formatDate(fromDate)} a ${formatDate(toDate)}`);
+
+  autoTable(ctx.doc, {
+    startY: ctx.cursorY,
+    margin: { left: MARGIN, right: MARGIN },
+    head: [['Descrição', 'Área', 'Ativo', 'Dias em atraso', 'Responsável', 'Prioridade']],
+    body: serviceOrders.map((o) => [o.description, o.areaName, o.assetName, String(o.daysOverdue), o.responsibleName, o.priority]),
+    theme: 'striped',
+    styles: { fontSize: 9, cellPadding: 7, textColor: COLOR.text, lineColor: COLOR.line, lineWidth: 0.5 },
+    headStyles: { fillColor: COLOR.primary, textColor: COLOR.white, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: COLOR.band },
+    columnStyles: { 0: { fontStyle: 'bold' } }
+  });
+
+  ctx.cursorY = (ctx.doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18;
+  ctx.doc.setFont('helvetica', 'italic');
+  ctx.doc.setFontSize(8.5);
+  ctx.doc.setTextColor(...COLOR.textMuted);
+  ctx.doc.text('Módulo de Ordens de Serviço ainda não integrado ao sistema — dados de demonstração.', MARGIN, ctx.cursorY);
+  ctx.doc.setTextColor(...COLOR.text);
+
+  drawFooters(ctx.doc);
+  return { doc: ctx.doc, filename: `relatorio-ordens-servico_${fromDate}_a_${toDate}.pdf` };
+}
+
+const CALL_STATUS_LABEL: Record<CallStatus, string> = { Open: 'Aberto', InProgress: 'Em andamento', Finished: 'Finalizado' };
+const CALL_PRIORITY_LABEL: Record<CallPriority, string> = { Baixa: 'Baixa', Media: 'Média', Alta: 'Alta' };
+
+export function buildCallsReportPdf(calls: CallListItemDto[], fromDate: string, toDate: string): GeneratedPdf {
+  const ctx = createDocument('Relatório de Chamados', `Período: ${formatDate(fromDate)} a ${formatDate(toDate)}`);
+
+  autoTable(ctx.doc, {
+    startY: ctx.cursorY,
+    margin: { left: MARGIN, right: MARGIN },
+    head: [['Assunto', 'Área', 'Aberto por', 'Responsável', 'Status', 'Prioridade', 'Aberto em']],
+    body: calls.map((c) => [
+      c.subject,
+      c.areaName,
+      c.createdByUserName,
+      c.assignedUserName ?? '—',
+      CALL_STATUS_LABEL[c.status],
+      CALL_PRIORITY_LABEL[c.priority],
+      formatDate(c.createdAtUtc)
+    ]),
+    theme: 'striped',
+    styles: { fontSize: 8.5, cellPadding: 6, textColor: COLOR.text, lineColor: COLOR.line, lineWidth: 0.5 },
+    headStyles: { fillColor: COLOR.primary, textColor: COLOR.white, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: COLOR.band },
+    columnStyles: { 0: { fontStyle: 'bold' } }
+  });
+
+  drawFooters(ctx.doc);
+  return { doc: ctx.doc, filename: `relatorio-chamados_${fromDate}_a_${toDate}.pdf` };
+}
+
+function hashSeed(input: string): number {
+  let h = 0;
+  for (let i = 0; i < input.length; i++) h = (Math.imul(31, h) + input.charCodeAt(i)) | 0;
+  return h;
+}
+
+function seededRng(seed: string) {
+  let state = hashSeed(seed);
+  return function next() {
+    state |= 0;
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seededInt(rng: () => number, min: number, max: number): number {
+  return min + Math.floor(rng() * (max - min + 1));
+}
+
+export function buildProdutividadeReportPdf(users: UserDto[], fromDate: string, toDate: string): GeneratedPdf {
+  const active = users.filter((u) => u.active);
+  const ctx = createDocument('Relatório de Produtividade de Colaboradores', `Período: ${formatDate(fromDate)} a ${formatDate(toDate)}`);
+
+  const rows = active.map((u) => {
+    const rng = seededRng(u.id + fromDate);
+    const completed = seededInt(rng, 8, 60);
+    const late = seededInt(rng, 0, 6);
+    const avgMinutes = seededInt(rng, 4, 35);
+    const punctuality = Math.max(60, 100 - late * 6);
+    return [u.name, roleLabel(u.role), String(completed), String(late), `${avgMinutes}min`, `${punctuality}%`];
+  });
+
+  autoTable(ctx.doc, {
+    startY: ctx.cursorY,
+    margin: { left: MARGIN, right: MARGIN },
+    head: [['Colaborador', 'Perfil', 'Checklists concluídos', 'Atrasos', 'Tempo médio', 'Pontualidade']],
+    body: rows,
+    theme: 'striped',
+    styles: { fontSize: 9, cellPadding: 7, textColor: COLOR.text, lineColor: COLOR.line, lineWidth: 0.5 },
+    headStyles: { fillColor: COLOR.primary, textColor: COLOR.white, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: COLOR.band },
+    columnStyles: { 0: { fontStyle: 'bold' } }
+  });
+
+  ctx.cursorY = (ctx.doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18;
+  ctx.doc.setFont('helvetica', 'italic');
+  ctx.doc.setFontSize(8.5);
+  ctx.doc.setTextColor(...COLOR.textMuted);
+  ctx.doc.text('Indicadores de produtividade ainda não calculados pelo sistema — dados de demonstração.', MARGIN, ctx.cursorY);
+  ctx.doc.setTextColor(...COLOR.text);
+
+  drawFooters(ctx.doc);
+  return { doc: ctx.doc, filename: `relatorio-produtividade_${fromDate}_a_${toDate}.pdf` };
 }

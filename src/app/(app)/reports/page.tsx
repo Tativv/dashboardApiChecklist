@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useAuthStore } from '@/features/auth/store';
 import { useByDateReport, useByAreaReport } from '@/features/reports/hooks';
 import { useAreas } from '@/features/areas/hooks';
 import { useInstances } from '@/features/checklist-instances/hooks';
@@ -8,10 +9,12 @@ import { useUsers } from '@/features/users/hooks';
 import { RequireRole } from '@/components/ui/require-role';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { PdfPreviewModal } from '@/components/pdf-preview-modal';
 import { toApiError } from '@/lib/api-error';
 import { todayIso } from '@/lib/format';
-import { buildByAreaReportPdf, buildByDateReportPdf, buildFullDailySummaryPdf, downloadPdf, getPdfPreviewUrl, GeneratedPdf } from '@/lib/pdf';
+import { buildByAreaReportPdf, buildByDateReportPdf, buildFullDailySummaryPdf, GeneratedPdf } from '@/lib/pdf';
 import { ChecklistInstanceDetailDto } from '@/types/api';
+import { DiretoriaReports } from './diretoria-reports';
 
 type ReportKey = 'by-date' | 'by-area' | 'daily-summary';
 
@@ -24,71 +27,6 @@ const reportCards: { key: ReportKey; title: string; description: string }[] = [
     description: 'Todas as checklists do dia, agrupadas por área e template, prontas para impressão.'
   }
 ];
-
-function PdfPreviewModal({ pdf, onClose }: { pdf: GeneratedPdf; onClose: () => void }) {
-  const [url, setUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    const blobUrl = getPdfPreviewUrl(pdf.doc);
-    setUrl(blobUrl);
-    return () => URL.revokeObjectURL(blobUrl);
-  }, [pdf]);
-
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(15, 23, 42, 0.6)',
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: 10,
-          width: '100%',
-          maxWidth: 920,
-          height: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden'
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 10,
-            padding: '14px 18px',
-            borderBottom: '1px solid var(--line)',
-            flexWrap: 'wrap'
-          }}
-        >
-          <b style={{ fontSize: 14 }}>{pdf.filename}</b>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" className="btn btn-primary" onClick={() => downloadPdf(pdf)}>
-              Baixar PDF
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
-              Fechar
-            </button>
-          </div>
-        </div>
-        <div style={{ flex: 1, background: '#f1f5f9' }}>
-          {url && <iframe src={url} title={pdf.filename} style={{ width: '100%', height: '100%', border: 'none' }} />}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ByDatePanel({ onPreview }: { onPreview: (pdf: GeneratedPdf) => void }) {
   const [fromDate, setFromDate] = useState(todayIso());
@@ -203,54 +141,62 @@ function DailySummaryPanel({ onPreview }: { onPreview: (pdf: GeneratedPdf) => vo
   );
 }
 
-export default function ReportsPage() {
+function StandardReports() {
   const [active, setActive] = useState<ReportKey | null>(null);
   const [preview, setPreview] = useState<GeneratedPdf | null>(null);
 
   return (
-    <RequireRole roles={['Directoria', 'Supervisor', 'Gerencia']}>
-      <div className="page">
-        <div className="toolbar">
-          <div>
-            <h1 className="page-title">Relatórios</h1>
-            <p className="page-subtitle">Selecione um relatório para visualizar o PDF.</p>
-          </div>
+    <div className="page">
+      <div className="toolbar">
+        <div>
+          <h1 className="page-title">Relatórios</h1>
+          <p className="page-subtitle">Selecione um relatório para visualizar o PDF.</p>
         </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16, marginBottom: 20 }}>
-          {reportCards.map((r) => (
-            <button
-              key={r.key}
-              type="button"
-              className="card"
-              style={{
-                textAlign: 'left',
-                cursor: 'pointer',
-                border: active === r.key ? '2px solid #547bf7' : '1px solid var(--line)'
-              }}
-              onClick={() => setActive(active === r.key ? null : r.key)}
-            >
-              <h2 className="card-title">{r.title}</h2>
-              <p className="card-sub" style={{ marginBottom: 0 }}>
-                {r.description}
-              </p>
-            </button>
-          ))}
-        </div>
-
-        {active && (
-          <section className="card">
-            <h2 className="card-title">{reportCards.find((r) => r.key === active)?.title}</h2>
-            <div style={{ marginTop: 12 }}>
-              {active === 'by-date' && <ByDatePanel onPreview={setPreview} />}
-              {active === 'by-area' && <ByAreaPanel onPreview={setPreview} />}
-              {active === 'daily-summary' && <DailySummaryPanel onPreview={setPreview} />}
-            </div>
-          </section>
-        )}
-
-        {preview && <PdfPreviewModal pdf={preview} onClose={() => setPreview(null)} />}
       </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16, marginBottom: 20 }}>
+        {reportCards.map((r) => (
+          <button
+            key={r.key}
+            type="button"
+            className="card"
+            style={{
+              textAlign: 'left',
+              cursor: 'pointer',
+              border: active === r.key ? '2px solid #547bf7' : '1px solid var(--line)'
+            }}
+            onClick={() => setActive(active === r.key ? null : r.key)}
+          >
+            <h2 className="card-title">{r.title}</h2>
+            <p className="card-sub" style={{ marginBottom: 0 }}>
+              {r.description}
+            </p>
+          </button>
+        ))}
+      </div>
+
+      {active && (
+        <section className="card">
+          <h2 className="card-title">{reportCards.find((r) => r.key === active)?.title}</h2>
+          <div style={{ marginTop: 12 }}>
+            {active === 'by-date' && <ByDatePanel onPreview={setPreview} />}
+            {active === 'by-area' && <ByAreaPanel onPreview={setPreview} />}
+            {active === 'daily-summary' && <DailySummaryPanel onPreview={setPreview} />}
+          </div>
+        </section>
+      )}
+
+      {preview && <PdfPreviewModal pdf={preview} onClose={() => setPreview(null)} />}
+    </div>
+  );
+}
+
+export default function ReportsPage() {
+  const user = useAuthStore((s) => s.user);
+
+  return (
+    <RequireRole roles={['Directoria', 'Supervisor', 'Gerencia']}>
+      {user?.role === 'Directoria' ? <DiretoriaReports /> : <StandardReports />}
     </RequireRole>
   );
 }
