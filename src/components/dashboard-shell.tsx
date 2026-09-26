@@ -41,14 +41,12 @@ const DIRETORIA_ICON_PATHS = {
   phone:
     'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z',
   reports: 'M3 3v18h18M8 17V10M13 17V6M18 17v-4',
-  briefcase: 'M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 7h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M3 12h18',
   shieldCheck: 'M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5zM9.5 12.5l2 2 3-4',
   settings:
     'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41',
-  chevron: 'M9 18l6-6-6-6',
-  file: 'M6 2h9l5 5v15H6z M14 2v6h6',
   pin: 'M12 21s7-7.09 7-12a7 7 0 0 0-14 0c0 4.91 7 12 7 12zM12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
-  box: 'M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8'
+  box: 'M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8',
+  users: 'M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'
 } as const;
 
 function NavIcon({ path, size = 17 }: { path: string; size?: number }) {
@@ -59,7 +57,9 @@ function NavIcon({ path, size = 17 }: { path: string; size?: number }) {
   );
 }
 
-const DIRETORIA_MAIN_NAV = [
+type DiretoriaNavItem = { href: string; label: string; icon: string; openParam?: string };
+
+const DIRETORIA_MAIN_NAV: DiretoriaNavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: DIRETORIA_ICON_PATHS.dashboard },
   { href: '/checklists', label: 'Checklist', icon: DIRETORIA_ICON_PATHS.checklist },
   { href: '/dashboard?open=serviceOrders', label: 'Ordens de Serviço', icon: DIRETORIA_ICON_PATHS.wrench, openParam: 'serviceOrders' },
@@ -67,73 +67,49 @@ const DIRETORIA_MAIN_NAV = [
   { href: '/reports', label: 'Relatórios', icon: DIRETORIA_ICON_PATHS.reports }
 ];
 
-const DIRETORIA_ADMIN_SUBNAV = [
-  { href: '/templates', label: 'Templates', icon: DIRETORIA_ICON_PATHS.file },
+const DIRETORIA_ADMIN_NAV: DiretoriaNavItem[] = [
   { href: '/areas', label: 'Áreas', icon: DIRETORIA_ICON_PATHS.pin },
-  { href: '/assets', label: 'Ativos', icon: DIRETORIA_ICON_PATHS.box }
+  { href: '/assets', label: 'Ativos', icon: DIRETORIA_ICON_PATHS.box },
+  { href: '/users', label: 'Usuários', icon: DIRETORIA_ICON_PATHS.users },
+  { href: '/users?open=permissions', label: 'Permissões', icon: DIRETORIA_ICON_PATHS.shieldCheck, openParam: 'permissions' },
+  { href: '/settings', label: 'Configurações', icon: DIRETORIA_ICON_PATHS.settings }
 ];
+
+function isDiretoriaNavActive(item: DiretoriaNavItem, activeSection: string, openParam: string | null): boolean {
+  const base = item.href.split('?')[0];
+  if (base !== activeSection) return false;
+  return item.openParam ? openParam === item.openParam : !openParam;
+}
+
+function DiretoriaNavLink({ item, activeSection, openParam }: { item: DiretoriaNavItem; activeSection: string; openParam: string | null }) {
+  const isActive = isDiretoriaNavActive(item, activeSection, openParam);
+  return (
+    <Link href={item.href} className={'nav ' + (isActive ? 'active' : '')}>
+      <span className="nav-icon">
+        <NavIcon path={item.icon} />
+      </span>
+      {item.label}
+    </Link>
+  );
+}
 
 function DiretoriaNav({ pathname }: { pathname: string }) {
   const searchParams = useSearchParams();
   const activeSection = '/' + (pathname.split('/')[1] ?? '');
   const openParam = searchParams.get('open');
-  const [adminOpen, setAdminOpen] = useState(
-    () => pathname.startsWith('/templates') || pathname.startsWith('/areas') || pathname.startsWith('/assets')
-  );
 
   return (
     <>
       <div className="nav-label">CENTRO DE CONTROLE</div>
-      {DIRETORIA_MAIN_NAV.map((item) => {
-        const base = item.href.split('?')[0];
-        const isActive = base === activeSection && (base !== '/dashboard' || (item.openParam ? openParam === item.openParam : !openParam));
-        return (
-          <Link key={item.href} href={item.href} className={'nav ' + (isActive ? 'active' : '')}>
-            <span className="nav-icon">
-              <NavIcon path={item.icon} />
-            </span>
-            {item.label}
-          </Link>
-        );
-      })}
+      {DIRETORIA_MAIN_NAV.map((item) => (
+        <DiretoriaNavLink key={item.href} item={item} activeSection={activeSection} openParam={openParam} />
+      ))}
 
       <div className="nav-divider" />
       <div className="nav-label">ADMINISTRAÇÃO</div>
-
-      <button type="button" className={'nav nav-group ' + (adminOpen ? 'open' : '')} onClick={() => setAdminOpen((v) => !v)}>
-        <span className="nav-icon">
-          <NavIcon path={DIRETORIA_ICON_PATHS.briefcase} />
-        </span>
-        Administração
-        <span className="nav-chevron">
-          <NavIcon path={DIRETORIA_ICON_PATHS.chevron} size={13} />
-        </span>
-      </button>
-      {adminOpen && (
-        <div className="nav-subgroup">
-          {DIRETORIA_ADMIN_SUBNAV.map((item) => (
-            <Link key={item.href} href={item.href} className={'nav nav-sub ' + (activeSection === item.href ? 'active' : '')}>
-              <span className="nav-icon">
-                <NavIcon path={item.icon} size={15} />
-              </span>
-              {item.label}
-            </Link>
-          ))}
-        </div>
-      )}
-
-      <Link href="/users" className={'nav ' + (activeSection === '/users' ? 'active' : '')}>
-        <span className="nav-icon">
-          <NavIcon path={DIRETORIA_ICON_PATHS.shieldCheck} />
-        </span>
-        Permissões
-      </Link>
-      <Link href="/settings" className={'nav ' + (activeSection === '/settings' ? 'active' : '')}>
-        <span className="nav-icon">
-          <NavIcon path={DIRETORIA_ICON_PATHS.settings} />
-        </span>
-        Configurações
-      </Link>
+      {DIRETORIA_ADMIN_NAV.map((item) => (
+        <DiretoriaNavLink key={item.href} item={item} activeSection={activeSection} openParam={openParam} />
+      ))}
     </>
   );
 }
@@ -143,10 +119,9 @@ const DIRETORIA_CRUMB_OVERRIDES: Record<string, string> = {
   '/checklists': 'Checklist',
   '/calls': 'Chamados',
   '/reports': 'Relatórios',
-  '/templates': 'Administração · Templates',
   '/areas': 'Administração · Áreas',
   '/assets': 'Administração · Ativos',
-  '/users': 'Permissões',
+  '/users': 'Administração · Usuários',
   '/settings': 'Configurações'
 };
 
