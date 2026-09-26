@@ -95,6 +95,7 @@ export interface ControlCenterData {
     inProgress: number;
     highPriority: number;
     avgResponseMinutes: number;
+    closedThisWeek: number;
   };
   operationSummary: {
     healthScore: number;
@@ -331,7 +332,8 @@ export function buildControlCenterData(realAreas: { id: string; name: string }[]
       open: openCalls.length,
       inProgress: rangeInt(seededRandom('calls-inprogress'), 1, 5),
       highPriority: openCalls.filter((c) => c.priority === 'Alta').length,
-      avgResponseMinutes: rangeInt(seededRandom('calls-avg'), 8, 45)
+      avgResponseMinutes: rangeInt(seededRandom('calls-avg'), 8, 45),
+      closedThisWeek: rangeInt(seededRandom('calls-closed'), 10, 30)
     },
     operationSummary: {
       healthScore: Math.round(areaMetrics.reduce((sum, a) => sum + a.complianceRate, 0) / Math.max(1, areaMetrics.length)),

@@ -35,7 +35,9 @@ const ICONS = {
   chevron: 'M9 18l6-6-6-6',
   clock: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 5v5l4 2',
   close: 'M18 6L6 18M6 6l12 12',
-  area: 'M12 21s7-7.09 7-12a7 7 0 0 0-14 0c0 4.91 7 12 7 12z M12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z'
+  area: 'M12 21s7-7.09 7-12a7 7 0 0 0-14 0c0 4.91 7 12 7 12z M12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+  hotel:
+    'M3 21h18M5 21V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v17M15 21V9a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v12M8 6h1M11 6h1M8 10h1M11 10h1M8 14h1M11 14h1'
 } as const;
 
 const AREA_ICON_PATHS = {
@@ -700,16 +702,14 @@ export function ControlCenter() {
       <div className="cc-kpi-grid">
         <button type="button" className="cc-kpi-card" onClick={() => setOpenKpi('checklists')}>
           <div className="cc-kpi-top">
-            <span className="cc-kpi-icon" style={{ background: '#e9efff', color: '#3766f5' }}>
-              <Icon path={ICONS.checklist} />
-            </span>
-            <span className={'cc-kpi-trend ' + (data.checklistsSummary.trendVsYesterday >= 0 ? 'up' : 'down')}>
-              {data.checklistsSummary.trendVsYesterday >= 0 ? '+' : ''}
-              {data.checklistsSummary.trendVsYesterday}% vs ontem
-            </span>
+            <div className="cc-kpi-top-left">
+              <span className="cc-kpi-icon" style={{ background: '#e9efff', color: '#3766f5' }}>
+                <Icon path={ICONS.checklist} />
+              </span>
+              <span className="cc-kpi-title">Checklists</span>
+            </div>
+            <span className="cc-kpi-corner-value">{data.checklistsSummary.completionRate}%</span>
           </div>
-          <div className="cc-kpi-title">Checklists</div>
-          <div className="cc-kpi-value">{data.checklistsSummary.completionRate}%</div>
           <div className="cc-kpi-cols">
             <div className="cc-kpi-col">
               <span className="cc-kpi-col-label">Concluídos</span>
@@ -730,13 +730,14 @@ export function ControlCenter() {
 
         <button type="button" className="cc-kpi-card" onClick={() => setOpenKpi('serviceOrders')}>
           <div className="cc-kpi-top">
-            <span className="cc-kpi-icon" style={{ background: '#fff4d6', color: '#9a6700' }}>
-              <Icon path={ICONS.wrench} />
-            </span>
-            <span className="cc-kpi-trend down">{data.serviceOrdersSummary.overdue} atrasadas</span>
+            <div className="cc-kpi-top-left">
+              <span className="cc-kpi-icon" style={{ background: '#fff4d6', color: '#9a6700' }}>
+                <Icon path={ICONS.wrench} />
+              </span>
+              <span className="cc-kpi-title">Ordens de Serviço</span>
+            </div>
+            <span className="cc-kpi-corner-value">{data.serviceOrdersSummary.open}</span>
           </div>
-          <div className="cc-kpi-title">Ordens de Serviço</div>
-          <div className="cc-kpi-value">{data.serviceOrdersSummary.open}</div>
           <div className="cc-kpi-cols">
             <div className="cc-kpi-col">
               <span className="cc-kpi-col-label">Em andamento</span>
@@ -757,25 +758,26 @@ export function ControlCenter() {
 
         <button type="button" className="cc-kpi-card" onClick={() => setOpenKpi('calls')}>
           <div className="cc-kpi-top">
-            <span className="cc-kpi-icon" style={{ background: '#f0ecff', color: '#5b3fd6' }}>
-              <Icon path={ICONS.phone} />
-            </span>
-            {data.callsSummary.highPriority > 0 && <span className="cc-kpi-alert">{data.callsSummary.highPriority} alta prioridade</span>}
+            <div className="cc-kpi-top-left">
+              <span className="cc-kpi-icon" style={{ background: '#f0ecff', color: '#5b3fd6' }}>
+                <Icon path={ICONS.phone} />
+              </span>
+              <span className="cc-kpi-title">Chamados</span>
+            </div>
+            <span className="cc-kpi-corner-value">{data.callsSummary.open}</span>
           </div>
-          <div className="cc-kpi-title">Chamados</div>
-          <div className="cc-kpi-value">{data.callsSummary.open}</div>
           <div className="cc-kpi-cols">
             <div className="cc-kpi-col">
-              <span className="cc-kpi-col-label">Em atendimento</span>
+              <span className="cc-kpi-col-label">Abertos</span>
+              <b>{data.callsSummary.open}</b>
+            </div>
+            <div className="cc-kpi-col">
+              <span className="cc-kpi-col-label">Em andamento</span>
               <b>{data.callsSummary.inProgress}</b>
             </div>
             <div className="cc-kpi-col">
-              <span className="cc-kpi-col-label">Alta prioridade</span>
-              <b>{data.callsSummary.highPriority}</b>
-            </div>
-            <div className="cc-kpi-col">
-              <span className="cc-kpi-col-label">Resp. média</span>
-              <b>{data.callsSummary.avgResponseMinutes}min</b>
+              <span className="cc-kpi-col-label">Finalizados</span>
+              <b>{data.callsSummary.closedThisWeek}</b>
             </div>
           </div>
           <ProgressBar percent={Math.max(10, 100 - data.callsSummary.open * 8)} color="#7c3aed" />
@@ -784,13 +786,14 @@ export function ControlCenter() {
 
         <button type="button" className="cc-kpi-card" onClick={() => setOpenKpi('operation')}>
           <div className="cc-kpi-top">
-            <span className="cc-kpi-icon" style={{ background: '#def7ec', color: '#16794e' }}>
-              <Icon path={ICONS.gauge} />
-            </span>
-            {data.operationSummary.criticalAlerts > 0 && <span className="cc-kpi-alert">{data.operationSummary.criticalAlerts} alertas</span>}
+            <div className="cc-kpi-top-left">
+              <span className="cc-kpi-icon" style={{ background: '#def7ec', color: '#16794e' }}>
+                <Icon path={ICONS.hotel} />
+              </span>
+              <span className="cc-kpi-title">Operação Geral</span>
+            </div>
+            <span className="cc-kpi-corner-value">{data.operationSummary.healthScore}%</span>
           </div>
-          <div className="cc-kpi-title">Operação Geral</div>
-          <div className="cc-kpi-value">{data.operationSummary.healthScore}%</div>
           <div className="cc-kpi-cols">
             <div className="cc-kpi-col">
               <span className="cc-kpi-col-label">Setores normais</span>
