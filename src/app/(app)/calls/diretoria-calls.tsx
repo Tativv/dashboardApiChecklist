@@ -7,8 +7,11 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toApiError } from '@/lib/api-error';
 import { formatDateTime, todayIso } from '@/lib/format';
-import { CallListItemDto, CallPriority } from '@/types/api';
+import { CallListItemDto, CallPriority, CallStatus } from '@/types/api';
 import { priorityLabel, priorityClass, statusLabel, statusClass, CreateCallForm, CallCommentsModal, CallDetailModal } from './shared';
+
+const PRIORITY_BAR_COLOR: Record<CallPriority, string> = { Baixa: '#5b3fd6', Media: '#315bd6', Alta: '#c43c35' };
+const CONVERTED_BAR_COLOR = '#7c3aed';
 
 const STORAGE_KEY = 'hotelops-call-service-order-links';
 
@@ -235,8 +238,10 @@ function DiretoriaCallCard({
     }
   }
 
+  const accentColor = link ? CONVERTED_BAR_COLOR : PRIORITY_BAR_COLOR[call.priority];
+
   return (
-    <div className="dc-card">
+    <div className="dc-card" style={{ borderLeftColor: accentColor }}>
       <div className="dc-card-top">
         <div style={{ minWidth: 0 }}>
           <div className="dc-card-title">{call.subject}</div>
@@ -309,10 +314,11 @@ export function DiretoriaCalls() {
   const areas = useAreas();
   const assignableUsersQuery = useUsers({ active: true });
   const [areaId, setAreaId] = useState('');
+  const [status, setStatus] = useState<CallStatus | 'Todos'>('Todos');
   const [priority, setPriority] = useState<CallPriority | 'Todas'>('Todas');
   const [search, setSearch] = useState('');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
-  const calls = useCalls({ areaId: areaId || undefined, priority });
+  const calls = useCalls({ areaId: areaId || undefined, status, priority });
   const [creating, setCreating] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [commentsCall, setCommentsCall] = useState<CallListItemDto | null>(null);
@@ -397,7 +403,7 @@ export function DiretoriaCalls() {
       {creating && <CreateCallForm onClose={() => setCreating(false)} />}
 
       <div className="dc-kpi-grid">
-        <div className="dc-kpi-card">
+        <div className="dc-kpi-card" style={{ background: 'rgba(154,103,0,.07)' }}>
           <span className="dc-kpi-icon" style={{ background: '#fff4d6', color: '#9a6700' }}>
             <Icon path={ICONS.open} />
           </span>
@@ -406,7 +412,7 @@ export function DiretoriaCalls() {
             <div className="dc-kpi-label">Abertos</div>
           </div>
         </div>
-        <div className="dc-kpi-card">
+        <div className="dc-kpi-card" style={{ background: 'rgba(55,102,245,.07)' }}>
           <span className="dc-kpi-icon" style={{ background: '#e9efff', color: '#3766f5' }}>
             <Icon path={ICONS.inProgress} />
           </span>
@@ -415,7 +421,7 @@ export function DiretoriaCalls() {
             <div className="dc-kpi-label">Em Andamento</div>
           </div>
         </div>
-        <div className="dc-kpi-card">
+        <div className="dc-kpi-card" style={{ background: 'rgba(22,121,78,.07)' }}>
           <span className="dc-kpi-icon" style={{ background: '#def7ec', color: '#16794e' }}>
             <Icon path={ICONS.finished} />
           </span>
@@ -424,7 +430,7 @@ export function DiretoriaCalls() {
             <div className="dc-kpi-label">Finalizados Hoje</div>
           </div>
         </div>
-        <div className="dc-kpi-card">
+        <div className="dc-kpi-card" style={{ background: 'rgba(196,60,53,.07)' }}>
           <span className="dc-kpi-icon" style={{ background: '#ffebe9', color: '#c43c35' }}>
             <Icon path={ICONS.critical} />
           </span>
@@ -443,6 +449,17 @@ export function DiretoriaCalls() {
             placeholder="Todas as áreas"
             className="btn btn-secondary"
             options={[{ value: '', label: 'Todas as áreas' }, ...(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))]}
+          />
+          <SearchableSelect
+            value={status}
+            onChange={(v) => setStatus(v as CallStatus | 'Todos')}
+            className="btn btn-secondary"
+            options={[
+              { value: 'Todos', label: 'Todos os status' },
+              { value: 'Open', label: 'Aberto' },
+              { value: 'InProgress', label: 'Em andamento' },
+              { value: 'Finished', label: 'Finalizado' }
+            ]}
           />
           <SearchableSelect
             value={priority}
