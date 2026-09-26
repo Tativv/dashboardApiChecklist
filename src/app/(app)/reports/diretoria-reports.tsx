@@ -22,13 +22,75 @@ import {
 type ReportTypeKey = 'operacional-geral' | 'checklists' | 'ordens-servico' | 'chamados' | 'desempenho-area' | 'produtividade';
 type PeriodKey = 'today' | '7d' | '15d' | 'month' | 'custom';
 
-const REPORT_TYPES: { key: ReportTypeKey; label: string; description: string }[] = [
-  { key: 'operacional-geral', label: 'Operacional Geral', description: 'Visão consolidada da operação no período.' },
-  { key: 'checklists', label: 'Checklists', description: 'Volume e cumprimento de checklists por dia.' },
-  { key: 'ordens-servico', label: 'Ordens de Serviço', description: 'Ordens atrasadas e em execução.' },
-  { key: 'chamados', label: 'Chamados', description: 'Chamados por prioridade, área e responsável.' },
-  { key: 'desempenho-area', label: 'Desempenho por Área', description: 'Cumprimento de checklists por área.' },
-  { key: 'produtividade', label: 'Produtividade de Colaboradores', description: 'Indicadores de desempenho da equipe.' }
+function Icon({ path, size = 18 }: { path: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d={path} />
+    </svg>
+  );
+}
+
+const REPORT_ICON_PATHS = {
+  hotel:
+    'M3 21h18M5 21V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v17M15 21V9a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v12M8 6h1M11 6h1M8 10h1M11 10h1M8 14h1M11 14h1',
+  checklist: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+  wrench:
+    'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+  phone:
+    'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z',
+  pin: 'M12 21s7-7.09 7-12a7 7 0 0 0-14 0c0 4.91 7 12 7 12zM12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+  users: 'M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'
+} as const;
+
+const REPORT_TYPES: { key: ReportTypeKey; label: string; description: string; icon: string; bg: string; color: string }[] = [
+  {
+    key: 'operacional-geral',
+    label: 'Operacional Geral',
+    description: 'Visão consolidada da operação no período.',
+    icon: REPORT_ICON_PATHS.hotel,
+    bg: '#def7ec',
+    color: '#16794e'
+  },
+  {
+    key: 'checklists',
+    label: 'Checklists',
+    description: 'Volume e cumprimento de checklists por dia.',
+    icon: REPORT_ICON_PATHS.checklist,
+    bg: '#e9efff',
+    color: '#3766f5'
+  },
+  {
+    key: 'ordens-servico',
+    label: 'Ordens de Serviço',
+    description: 'Ordens atrasadas e em execução.',
+    icon: REPORT_ICON_PATHS.wrench,
+    bg: '#fff4d6',
+    color: '#9a6700'
+  },
+  {
+    key: 'chamados',
+    label: 'Chamados',
+    description: 'Chamados por prioridade, área e responsável.',
+    icon: REPORT_ICON_PATHS.phone,
+    bg: '#f0ecff',
+    color: '#5b3fd6'
+  },
+  {
+    key: 'desempenho-area',
+    label: 'Desempenho por Área',
+    description: 'Cumprimento de checklists por área.',
+    icon: REPORT_ICON_PATHS.pin,
+    bg: '#e0f7fa',
+    color: '#0e7490'
+  },
+  {
+    key: 'produtividade',
+    label: 'Produtividade de Colaboradores',
+    description: 'Indicadores de desempenho da equipe.',
+    icon: REPORT_ICON_PATHS.users,
+    bg: '#fce7f3',
+    color: '#be185d'
+  }
 ];
 
 const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
@@ -123,6 +185,14 @@ export function DiretoriaReports() {
                 className={'report-type-card' + (reportType === r.key ? ' selected' : '')}
                 onClick={() => setReportType(r.key)}
               >
+                <div className="report-type-card-top">
+                  <span className="report-type-icon" style={{ background: r.bg, color: r.color }}>
+                    <Icon path={r.icon} size={17} />
+                  </span>
+                  <span className="report-type-radio" aria-hidden="true">
+                    <i />
+                  </span>
+                </div>
                 <b>{r.label}</b>
                 <span>{r.description}</span>
               </button>
