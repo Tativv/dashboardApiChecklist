@@ -1,5 +1,6 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/features/auth/store';
 import { useAreas } from '@/features/areas/hooks';
 import { roleLabel } from '@/components/ui/status-badge';
@@ -651,6 +652,14 @@ export function ControlCenter() {
   const visibleServiceOrders = data.overdueServiceOrders.slice(0, 5);
   const visibleCalls = sortedCalls.slice(0, 5);
   const visibleActivity = data.activity.slice(0, 5);
+
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const open = searchParams.get('open');
+    if (open === 'checklists' || open === 'serviceOrders' || open === 'calls' || open === 'operation') {
+      setOpenKpi(open);
+    }
+  }, [searchParams]);
 
   function onActivityClick(ev: ActivityEvent) {
     if (ev.relatedKind === 'serviceOrder') {

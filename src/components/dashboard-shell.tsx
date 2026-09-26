@@ -1,7 +1,7 @@
 'use client';
 import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/features/auth/store';
 import { UserRole } from '@/types/api';
 import { roleLabel } from '@/components/ui/status-badge';
@@ -30,6 +30,124 @@ const access: Record<string, UserRole[]> = {
   '/checklists': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia'],
   '/my-tasks': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia'],
   '/calls': ['Directoria', 'Supervisor', 'Colaborador', 'Gerencia']
+};
+
+const DIRETORIA_ICON_PATHS = {
+  dashboard:
+    'M3 21h18M5 21V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v17M15 21V9a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v12M8 6h1M11 6h1M8 10h1M11 10h1M8 14h1M11 14h1',
+  checklist: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+  wrench:
+    'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+  phone:
+    'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z',
+  reports: 'M3 3v18h18M8 17V10M13 17V6M18 17v-4',
+  briefcase: 'M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 7h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M3 12h18',
+  shieldCheck: 'M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5zM9.5 12.5l2 2 3-4',
+  settings:
+    'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41',
+  chevron: 'M9 18l6-6-6-6',
+  file: 'M6 2h9l5 5v15H6z M14 2v6h6',
+  pin: 'M12 21s7-7.09 7-12a7 7 0 0 0-14 0c0 4.91 7 12 7 12zM12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+  box: 'M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8'
+} as const;
+
+function NavIcon({ path, size = 17 }: { path: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d={path} />
+    </svg>
+  );
+}
+
+const DIRETORIA_MAIN_NAV = [
+  { href: '/dashboard', label: 'Dashboard', icon: DIRETORIA_ICON_PATHS.dashboard },
+  { href: '/checklists', label: 'Checklist', icon: DIRETORIA_ICON_PATHS.checklist },
+  { href: '/dashboard?open=serviceOrders', label: 'Ordens de Serviço', icon: DIRETORIA_ICON_PATHS.wrench, openParam: 'serviceOrders' },
+  { href: '/calls', label: 'Chamados', icon: DIRETORIA_ICON_PATHS.phone },
+  { href: '/reports', label: 'Relatórios', icon: DIRETORIA_ICON_PATHS.reports }
+];
+
+const DIRETORIA_ADMIN_SUBNAV = [
+  { href: '/templates', label: 'Templates', icon: DIRETORIA_ICON_PATHS.file },
+  { href: '/areas', label: 'Áreas', icon: DIRETORIA_ICON_PATHS.pin },
+  { href: '/assets', label: 'Ativos', icon: DIRETORIA_ICON_PATHS.box }
+];
+
+function DiretoriaNav({ pathname }: { pathname: string }) {
+  const searchParams = useSearchParams();
+  const activeSection = '/' + (pathname.split('/')[1] ?? '');
+  const openParam = searchParams.get('open');
+  const [adminOpen, setAdminOpen] = useState(
+    () => pathname.startsWith('/templates') || pathname.startsWith('/areas') || pathname.startsWith('/assets')
+  );
+
+  return (
+    <>
+      <div className="nav-label">CENTRO DE CONTROLE</div>
+      {DIRETORIA_MAIN_NAV.map((item) => {
+        const base = item.href.split('?')[0];
+        const isActive = base === activeSection && (base !== '/dashboard' || (item.openParam ? openParam === item.openParam : !openParam));
+        return (
+          <Link key={item.href} href={item.href} className={'nav ' + (isActive ? 'active' : '')}>
+            <span className="nav-icon">
+              <NavIcon path={item.icon} />
+            </span>
+            {item.label}
+          </Link>
+        );
+      })}
+
+      <div className="nav-divider" />
+      <div className="nav-label">ADMINISTRAÇÃO</div>
+
+      <button type="button" className={'nav nav-group ' + (adminOpen ? 'open' : '')} onClick={() => setAdminOpen((v) => !v)}>
+        <span className="nav-icon">
+          <NavIcon path={DIRETORIA_ICON_PATHS.briefcase} />
+        </span>
+        Administração
+        <span className="nav-chevron">
+          <NavIcon path={DIRETORIA_ICON_PATHS.chevron} size={13} />
+        </span>
+      </button>
+      {adminOpen && (
+        <div className="nav-subgroup">
+          {DIRETORIA_ADMIN_SUBNAV.map((item) => (
+            <Link key={item.href} href={item.href} className={'nav nav-sub ' + (activeSection === item.href ? 'active' : '')}>
+              <span className="nav-icon">
+                <NavIcon path={item.icon} size={15} />
+              </span>
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <Link href="/users" className={'nav ' + (activeSection === '/users' ? 'active' : '')}>
+        <span className="nav-icon">
+          <NavIcon path={DIRETORIA_ICON_PATHS.shieldCheck} />
+        </span>
+        Permissões
+      </Link>
+      <Link href="/settings" className={'nav ' + (activeSection === '/settings' ? 'active' : '')}>
+        <span className="nav-icon">
+          <NavIcon path={DIRETORIA_ICON_PATHS.settings} />
+        </span>
+        Configurações
+      </Link>
+    </>
+  );
+}
+
+const DIRETORIA_CRUMB_OVERRIDES: Record<string, string> = {
+  '/dashboard': 'Centro de Controle Operacional',
+  '/checklists': 'Checklist',
+  '/calls': 'Chamados',
+  '/reports': 'Relatórios',
+  '/templates': 'Administração · Templates',
+  '/areas': 'Administração · Áreas',
+  '/assets': 'Administração · Ativos',
+  '/users': 'Permissões',
+  '/settings': 'Configurações'
 };
 
 function initials(name: string): string {
@@ -84,15 +202,21 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             <small>Resort</small>
           </span>
         </div>
-        <div className="nav-label">OPERAÇÕES</div>
-        {nav
-          .filter((n) => access[n[0]].includes(role))
-          .map((n) => (
-            <Link key={n[0]} href={n[0]} className={'nav ' + (activeSection === n[0] ? 'active' : '')}>
-              <span className="nav-icon">{n[1]}</span>
-              {n[2]}
-            </Link>
-          ))}
+        {role === 'Directoria' ? (
+          <DiretoriaNav pathname={pathname} />
+        ) : (
+          <>
+            <div className="nav-label">OPERAÇÕES</div>
+            {nav
+              .filter((n) => access[n[0]].includes(role))
+              .map((n) => (
+                <Link key={n[0]} href={n[0]} className={'nav ' + (activeSection === n[0] ? 'active' : '')}>
+                  <span className="nav-icon">{n[1]}</span>
+                  {n[2]}
+                </Link>
+              ))}
+          </>
+        )}
         <div className="nav-label">SESSÃO</div>
         <button
           className="nav"
@@ -117,7 +241,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               ☰
             </button>
             <div className="crumb">
-              Vale Suíço Resort / <strong>{nav.find((n) => n[0] === activeSection)?.[2] ?? ''}</strong>
+              Vale Suíço Resort /{' '}
+              <strong>
+                {(role === 'Directoria' ? DIRETORIA_CRUMB_OVERRIDES[activeSection] : undefined) ??
+                  nav.find((n) => n[0] === activeSection)?.[2] ??
+                  ''}
+              </strong>
             </div>
           </div>
           <div className="top-actions">
