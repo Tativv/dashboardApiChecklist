@@ -310,6 +310,7 @@ export function DiretoriaCalls() {
   const assignableUsersQuery = useUsers({ active: true });
   const [areaId, setAreaId] = useState('');
   const [priority, setPriority] = useState<CallPriority | 'Todas'>('Todas');
+  const [search, setSearch] = useState('');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const calls = useCalls({ areaId: areaId || undefined, priority });
   const [creating, setCreating] = useState(false);
@@ -333,8 +334,8 @@ export function DiretoriaCalls() {
   const finalizadosHoje = list.filter((c) => c.status === 'Finished' && c.completedAt?.slice(0, 10) === today).length;
   const criticos = list.filter((c) => c.priority === 'Alta' && c.status !== 'Finished').length;
 
-  const filtered = list.filter((c) => {
-    switch (quickFilter) {
+  function matchesQuickFilter(c: CallListItemDto, filter: QuickFilter): boolean {
+    switch (filter) {
       case 'open':
         return c.status === 'Open';
       case 'in-progress':
@@ -348,6 +349,27 @@ export function DiretoriaCalls() {
       default:
         return true;
     }
+  }
+
+  const quickFilterCounts: Record<QuickFilter, number> = {
+    all: list.length,
+    open: abertos,
+    'in-progress': emAndamento,
+    critical: criticos,
+    'converted-os': list.filter((c) => !!links[c.id]).length,
+    finished: list.filter((c) => c.status === 'Finished').length
+  };
+
+  const searchTerm = search.trim().toLowerCase();
+  const filtered = list.filter((c) => {
+    if (!matchesQuickFilter(c, quickFilter)) return false;
+    if (!searchTerm) return true;
+    return (
+      c.subject.toLowerCase().includes(searchTerm) ||
+      c.areaName.toLowerCase().includes(searchTerm) ||
+      (c.assignedUserName ?? '').toLowerCase().includes(searchTerm) ||
+      c.createdByUserName.toLowerCase().includes(searchTerm)
+    );
   });
 
   function onConfirmConvert(link: ServiceOrderLink) {
@@ -413,6 +435,36 @@ export function DiretoriaCalls() {
         </div>
       </div>
 
+      <div className="dc-filters-row">
+        <div className="dc-filters-left">
+          <SearchableSelect
+            value={areaId}
+            onChange={setAreaId}
+            placeholder="Todas as áreas"
+            className="btn btn-secondary"
+            options={[{ value: '', label: 'Todas as áreas' }, ...(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))]}
+          />
+          <SearchableSelect
+            value={priority}
+            onChange={(v) => setPriority(v as CallPriority | 'Todas')}
+            className="btn btn-secondary"
+            options={[
+              { value: 'Todas', label: 'Todas as prioridades' },
+              { value: 'Alta', label: 'Alta' },
+              { value: 'Media', label: 'Média' },
+              { value: 'Baixa', label: 'Baixa' }
+            ]}
+          />
+        </div>
+        <input
+          type="search"
+          className="search"
+          placeholder="Buscar chamados…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
       <div className="dc-quick-filters">
         {QUICK_FILTERS.map((f) => (
           <button
@@ -421,30 +473,10 @@ export function DiretoriaCalls() {
             className={'dc-quick-filter' + (quickFilter === f.key ? ' selected' : '')}
             onClick={() => setQuickFilter(f.key)}
           >
-            {f.label}
+            <span>{f.label}</span>
+            <span className="dc-quick-filter-count">{quickFilterCounts[f.key]}</span>
           </button>
         ))}
-      </div>
-
-      <div style={{ display: 'flex', gap: 10, margin: '14px 0 16px', flexWrap: 'wrap' }}>
-        <SearchableSelect
-          value={areaId}
-          onChange={setAreaId}
-          placeholder="Todas as áreas"
-          className="btn btn-secondary"
-          options={[{ value: '', label: 'Todas as áreas' }, ...(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))]}
-        />
-        <SearchableSelect
-          value={priority}
-          onChange={(v) => setPriority(v as CallPriority | 'Todas')}
-          className="btn btn-secondary"
-          options={[
-            { value: 'Todas', label: 'Todas as prioridades' },
-            { value: 'Alta', label: 'Alta' },
-            { value: 'Media', label: 'Média' },
-            { value: 'Baixa', label: 'Baixa' }
-          ]}
-        />
       </div>
 
       <div className="card-list">
