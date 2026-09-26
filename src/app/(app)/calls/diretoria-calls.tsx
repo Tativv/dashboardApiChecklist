@@ -10,7 +10,7 @@ import { formatDateTime, todayIso } from '@/lib/format';
 import { CallListItemDto, CallPriority, CallStatus } from '@/types/api';
 import { priorityLabel, priorityClass, statusLabel, statusClass, CreateCallForm, CallCommentsModal, CallDetailModal } from './shared';
 
-const PRIORITY_BAR_COLOR: Record<CallPriority, string> = { Baixa: '#5b3fd6', Media: '#315bd6', Alta: '#c43c35' };
+const STATUS_BAR_COLOR: Record<CallStatus, string> = { Open: '#9a6700', InProgress: '#315bd6', Finished: '#16794e' };
 const CONVERTED_BAR_COLOR = '#7c3aed';
 
 const STORAGE_KEY = 'hotelops-call-service-order-links';
@@ -238,7 +238,7 @@ function DiretoriaCallCard({
     }
   }
 
-  const accentColor = link ? CONVERTED_BAR_COLOR : PRIORITY_BAR_COLOR[call.priority];
+  const accentColor = link ? CONVERTED_BAR_COLOR : STATUS_BAR_COLOR[call.status];
 
   return (
     <div className="dc-card" style={{ borderLeftColor: accentColor }}>
