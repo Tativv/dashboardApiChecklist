@@ -66,7 +66,23 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <div className={'sidebar-overlay ' + (menuOpen ? 'open' : '')} onClick={() => setMenuOpen(false)} />
       <aside className={'sidebar ' + (menuOpen ? 'open' : '')}>
         <div className="brand">
-          <span className="brand-mark">✓</span>HotelOps
+          <span className="brand-logo" aria-hidden="true">
+            <svg viewBox="0 0 40 40" width="30" height="30">
+              <defs>
+                <linearGradient id="brandLogoGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#5e87ff" />
+                  <stop offset="100%" stopColor="#2947c9" />
+                </linearGradient>
+              </defs>
+              <circle cx="20" cy="20" r="19" fill="url(#brandLogoGrad)" />
+              <path d="M8 27 L16 13 L21 21 L25 15 L32 27 Z" fill="#eef2ff" opacity="0.95" />
+              <circle cx="27" cy="11" r="3.2" fill="#fff" />
+            </svg>
+          </span>
+          <span className="brand-name">
+            Vale Suíço
+            <small>Resort</small>
+          </span>
         </div>
         <div className="nav-label">OPERAÇÕES</div>
         {nav
@@ -101,7 +117,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               ☰
             </button>
             <div className="crumb">
-              Hotel Aurora / <strong>{nav.find((n) => n[0] === activeSection)?.[2] ?? ''}</strong>
+              Vale Suíço Resort / <strong>{nav.find((n) => n[0] === activeSection)?.[2] ?? ''}</strong>
             </div>
           </div>
           <div className="top-actions">

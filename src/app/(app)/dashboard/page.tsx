@@ -6,6 +6,7 @@ import { useInstances, useMyAssignedTasks } from '@/features/checklist-instances
 import { StatusBadge, TaskExecutionStatusBadge, isOverdue } from '@/components/ui/status-badge';
 import { formatDuration, formatTime, todayIso, daysAgoIso } from '@/lib/format';
 import { ByDateReportItemDto } from '@/types/api';
+import { ControlCenter } from './control-center';
 
 function K({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
@@ -68,7 +69,7 @@ function TrendChart({ items }: { items: ByDateReportItemDto[] }) {
   );
 }
 
-export default function DashboardPage() {
+function StandardDashboard() {
   const user = useAuthStore((s) => s.user);
   const canSeeReports = isSupervisorOrAbove(user?.role);
   const today = todayIso();
@@ -206,4 +207,14 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+}
+
+export default function DashboardPage() {
+  const user = useAuthStore((s) => s.user);
+
+  if (user?.role === 'Directoria') {
+    return <ControlCenter />;
+  }
+
+  return <StandardDashboard />;
 }
