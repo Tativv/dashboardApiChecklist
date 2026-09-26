@@ -34,7 +34,8 @@ const ICONS = {
   refresh: 'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15',
   chevron: 'M9 18l6-6-6-6',
   clock: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 5v5l4 2',
-  close: 'M18 6L6 18M6 6l12 12'
+  close: 'M18 6L6 18M6 6l12 12',
+  area: 'M12 21s7-7.09 7-12a7 7 0 0 0-14 0c0 4.91 7 12 7 12z M12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z'
 } as const;
 
 function activityIconAndColor(type: ActivityEvent['type']): { path: string; color: string } {
@@ -738,53 +739,53 @@ export function ControlCenter() {
         </button>
       </div>
 
-      <div className="cc-section-header">
-        <h2 className="cc-section-title">Desempenho por áreas</h2>
-        {data.areaMetrics.length > 6 && (
-          <button type="button" className="cc-link-btn" onClick={() => setShowAllAreas(true)}>
-            Ver todas as áreas
-          </button>
-        )}
-      </div>
-      <div className="cc-area-grid">
-        {visibleAreas.map((a) => (
-          <button type="button" className="cc-area-card" key={a.areaId} onClick={() => setOpenArea(a)}>
-            <Gauge percent={a.complianceRate} status={a.status} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="cc-area-card-top">
-                <span className="list-card-title" style={{ fontSize: 13 }}>
-                  {a.areaName}
-                </span>
-                <StatusPill status={a.status} />
-              </div>
-              <div className="cc-area-card-stats">
-                <span>{a.pendingChecklists} pendentes</span>
-                <span>{a.openCalls} chamados</span>
-                <span>{a.overdueServiceOrders} O.S. atrasadas</span>
-              </div>
-            </div>
-          </button>
-        ))}
-      </div>
+      <div className="cc-desempenho-grid" style={{ marginTop: 26 }}>
+        <section className="card cc-desempenho-card">
+          <div className="cc-card-header-row">
+            <h2 className="card-title" style={{ margin: 0 }}>
+              Desempenho por áreas
+            </h2>
+            {data.areaMetrics.length > 6 && (
+              <button type="button" className="cc-link-btn" onClick={() => setShowAllAreas(true)}>
+                Ver todas as áreas
+              </button>
+            )}
+          </div>
+          <div className="cc-area-grid-v">
+            {visibleAreas.map((a) => (
+              <button type="button" className="cc-area-card-v" key={a.areaId} onClick={() => setOpenArea(a)}>
+                <div className="cc-area-card-v-head">
+                  <Icon path={ICONS.area} size={16} />
+                  <span>{a.areaName}</span>
+                </div>
+                <Gauge percent={a.complianceRate} status={a.status} />
+                <div className="cc-area-card-v-status">
+                  <i style={{ background: SECTOR_STATUS_COLOR[a.status] }} />
+                  <span>{SECTOR_STATUS_LABEL[a.status]}</span>
+                </div>
+                <div className="cc-area-card-v-stats">
+                  <span>{a.pendingChecklists} pendentes</span>
+                  <span>{a.overdueServiceOrders} O.S. atrasadas</span>
+                  <span>{a.openCalls} chamados abertos</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
 
-      <section className="card cc-sectors-strip" style={{ marginTop: 26 }}>
-        <div className="cc-sectors-strip-inner">
-          <div className="cc-sectors-strip-left">
-            <div className="cc-donut cc-donut-sm" style={{ background: donutBackground }}>
-              <div className="cc-donut-inner cc-donut-inner-sm">
+        <section className="card cc-sectors-card">
+          <h2 className="card-title" style={{ margin: 0 }}>
+            Status dos Setores
+          </h2>
+          <div className="cc-sectors-donut-wrap">
+            <div className="cc-donut" style={{ background: donutBackground }}>
+              <div className="cc-donut-inner">
                 <b>{data.operationSummary.sectorsTotal}</b>
+                <span>setores</span>
               </div>
-            </div>
-            <div>
-              <div className="card-title" style={{ margin: 0 }}>
-                Status dos Setores
-              </div>
-              <p className="card-sub" style={{ margin: '2px 0 0' }}>
-                Distribuição geral do resort
-              </p>
             </div>
           </div>
-          <div className="cc-sectors-strip-legend">
+          <div className="cc-sectors-legend-v">
             {(['Normal', 'Atencao', 'Critico'] as SectorStatus[]).map((status) => {
               const count = data.areaMetrics.filter((a) => a.status === status).length;
               return (
@@ -796,8 +797,8 @@ export function ControlCenter() {
               );
             })}
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <div className="cc-bottom-grid-equal" style={{ marginTop: 20 }}>
         <section className="card">
