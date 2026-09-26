@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/features/auth/store';
 import { UserRole } from '@/types/api';
-import { roleLabel } from '@/components/ui/status-badge';
+import { UserMenu } from '@/components/user-menu';
 
 const nav: [string, string, string][] = [
   ['/dashboard', '▦', 'Resumo'],
@@ -125,19 +125,11 @@ const DIRETORIA_CRUMB_OVERRIDES: Record<string, string> = {
   '/settings': 'Configurações'
 };
 
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join('');
-}
-
 export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const loginAt = useAuthStore((s) => s.loginAt);
   const logout = useAuthStore((s) => s.logout);
   const role = user?.role ?? 'Colaborador';
   const activeSection = '/' + (pathname.split('/')[1] ?? '');
@@ -192,17 +184,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               ))}
           </>
         )}
-        <div className="nav-label">SESSÃO</div>
-        <button
-          className="nav"
-          onClick={() => {
-            logout();
-            router.push('/login');
-          }}
-        >
-          <span className="nav-icon">⎋</span>
-          Sair
-        </button>
       </aside>
       <main className="main">
         <header className="topbar">
@@ -225,10 +206,16 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="top-actions">
-            <span className="muted" style={{ fontSize: 13 }}>
-              {user ? roleLabel(user.role) : ''}
-            </span>
-            <span className="avatar">{user ? initials(user.name) : ''}</span>
+            {user && (
+              <UserMenu
+                user={user}
+                loginAt={loginAt}
+                onLogout={() => {
+                  logout();
+                  router.push('/login');
+                }}
+              />
+            )}
           </div>
         </header>
         {children}

@@ -13,6 +13,7 @@ interface AuthState {
   token: string | null;
   expiresAtUtc: string | null;
   user: AuthUser | null;
+  loginAt: string | null;
   setSession: (session: { token: string; expiresAtUtc: string; user: AuthUser }) => void;
   logout: () => void;
 }
@@ -23,12 +24,13 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       expiresAtUtc: null,
       user: null,
-      setSession: ({ token, expiresAtUtc, user }) => set({ token, expiresAtUtc, user }),
-      logout: () => set({ token: null, expiresAtUtc: null, user: null })
+      loginAt: null,
+      setSession: ({ token, expiresAtUtc, user }) => set({ token, expiresAtUtc, user, loginAt: new Date().toISOString() }),
+      logout: () => set({ token: null, expiresAtUtc: null, user: null, loginAt: null })
     }),
     {
       name: 'hotelops-auth',
-      partialize: (state) => ({ token: state.token, expiresAtUtc: state.expiresAtUtc, user: state.user })
+      partialize: (state) => ({ token: state.token, expiresAtUtc: state.expiresAtUtc, user: state.user, loginAt: state.loginAt })
     }
   )
 );

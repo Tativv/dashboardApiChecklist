@@ -8,6 +8,15 @@ export function useUsers(filters: UserFilters = {}, enabled = true) {
   return useQuery({ queryKey: [...KEY, filters], queryFn: () => api.listUsers(filters), enabled });
 }
 
+export function useUser(id?: string, enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, id],
+    queryFn: () => api.getUser(id as string),
+    enabled: enabled && !!id,
+    retry: false
+  });
+}
+
 export function useCreateUser() {
   const qc = useQueryClient();
   return useMutation({
