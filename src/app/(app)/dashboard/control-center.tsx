@@ -38,6 +38,38 @@ const ICONS = {
   area: 'M12 21s7-7.09 7-12a7 7 0 0 0-14 0c0 4.91 7 12 7 12z M12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z'
 } as const;
 
+const AREA_ICON_PATHS = {
+  utensils: 'M6 2v6a2 2 0 0 0 4 0V2M8 8v14M17 2c-1.5 1-2 3-2 5s.5 3 2 4v9',
+  waves: 'M2 6c1 1 2 1 3 1s2-1 3-1 2 1 3 1 2-1 3-1 2 1 3 1 2-1 3-1M2 12c1 1 2 1 3 1s2-1 3-1 2 1 3 1 2-1 3-1 2 1 3 1 2-1 3-1M2 18c1 1 2 1 3 1s2-1 3-1 2 1 3 1 2-1 3-1 2 1 3 1 2-1 3-1',
+  bed: 'M2 4v16M2 12h20v8M2 12V8a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v4M14 12V9a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3',
+  bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
+  leaf: 'M4 20c8 0 16-4 16-16-8 0-16 6-16 16zM8 16c2-2 6-6 12-12',
+  shield: 'M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z',
+  dumbbell: 'M4 9v6M20 9v6M2 11v2M22 11v2M6 12h12',
+  car: 'M3 17h1a2 2 0 0 0 4 0h8a2 2 0 0 0 4 0h1v-4l-2-5H5L3 13zM7 10h10'
+} as const;
+
+const AREA_ICON_RULES: { keywords: string[]; path: string; bg: string; color: string }[] = [
+  { keywords: ['cozinha', 'alimento', 'bebida', 'restaurante', 'bar'], path: AREA_ICON_PATHS.utensils, bg: '#fff4d6', color: '#9a6700' },
+  { keywords: ['piscina', 'lazer', 'spa', 'wellness'], path: AREA_ICON_PATHS.waves, bg: '#e0f7fa', color: '#0e7490' },
+  { keywords: ['governan', 'housekeeping', 'quarto', 'apartamento'], path: AREA_ICON_PATHS.bed, bg: '#f0ecff', color: '#5b3fd6' },
+  { keywords: ['recep', 'concierge'], path: AREA_ICON_PATHS.bell, bg: '#e9efff', color: '#3766f5' },
+  { keywords: ['manuten', 'eletric', 'hidraul', 'engenharia'], path: ICONS.wrench, bg: '#fff4d6', color: '#9a6700' },
+  { keywords: ['jardim', 'paisag', 'externa', 'externo'], path: AREA_ICON_PATHS.leaf, bg: '#def7ec', color: '#16794e' },
+  { keywords: ['seguran'], path: AREA_ICON_PATHS.shield, bg: '#ffebe9', color: '#c43c35' },
+  { keywords: ['academia', 'fitness', 'ginasio'], path: AREA_ICON_PATHS.dumbbell, bg: '#e9efff', color: '#3766f5' },
+  { keywords: ['estacionamento', 'garagem'], path: AREA_ICON_PATHS.car, bg: '#f1f3f7', color: '#475467' }
+];
+
+function areaIcon(name: string): { path: string; bg: string; color: string } {
+  const normalized = name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+  const rule = AREA_ICON_RULES.find((r) => r.keywords.some((k) => normalized.includes(k)));
+  return rule ?? { path: ICONS.area, bg: '#eef1f6', color: '#475467' };
+}
+
 function activityIconAndColor(type: ActivityEvent['type']): { path: string; color: string } {
   switch (type) {
     case 'checklist_finished':
@@ -454,24 +486,30 @@ function AllAreasModal({ areas, onSelect, onClose }: { areas: AreaMetrics[]; onS
   return (
     <ModalShell title="Todas as áreas" subtitle={`${areas.length} áreas configuradas`} onClose={onClose} maxWidth={780}>
       <div className="cc-area-grid">
-        {areas.map((a) => (
-          <button type="button" className="cc-area-card" key={a.areaId} onClick={() => onSelect(a)}>
-            <Gauge percent={a.complianceRate} status={a.status} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="cc-area-card-top">
-                <span className="list-card-title" style={{ fontSize: 13 }}>
-                  {a.areaName}
-                </span>
-                <StatusPill status={a.status} />
+        {areas.map((a) => {
+          const icon = areaIcon(a.areaName);
+          return (
+            <button type="button" className="cc-area-card" key={a.areaId} onClick={() => onSelect(a)}>
+              <Gauge percent={a.complianceRate} status={a.status} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="cc-area-card-top">
+                  <span className="list-card-title" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="cc-area-card-v-icon" style={{ background: icon.bg, color: icon.color }}>
+                      <Icon path={icon.path} size={12} />
+                    </span>
+                    {a.areaName}
+                  </span>
+                  <StatusPill status={a.status} />
+                </div>
+                <div className="cc-area-card-stats">
+                  <span>{a.pendingChecklists} pendentes</span>
+                  <span>{a.openCalls} chamados</span>
+                  <span>{a.overdueServiceOrders} O.S. atrasadas</span>
+                </div>
               </div>
-              <div className="cc-area-card-stats">
-                <span>{a.pendingChecklists} pendentes</span>
-                <span>{a.openCalls} chamados</span>
-                <span>{a.overdueServiceOrders} O.S. atrasadas</span>
-              </div>
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
     </ModalShell>
   );
@@ -503,9 +541,6 @@ function AllServiceOrdersModal({
               <tr key={o.id} className="cc-row" onClick={() => onSelect(o)}>
                 <td>
                   <b>{o.description}</b>
-                  <div className="muted" style={{ fontSize: 11 }}>
-                    {o.areaName}
-                  </div>
                 </td>
                 <td className="muted">{o.assetName}</td>
                 <td>
@@ -529,7 +564,6 @@ function AllCallsModal({ calls, onSelect, onClose }: { calls: OpenCall[]; onSele
           <thead>
             <tr>
               <th>Descrição</th>
-              <th>De → Para</th>
               <th>Tempo aberto</th>
               <th>Prioridade</th>
             </tr>
@@ -539,9 +573,6 @@ function AllCallsModal({ calls, onSelect, onClose }: { calls: OpenCall[]; onSele
               <tr key={c.id} className="cc-row" onClick={() => onSelect(c)}>
                 <td>
                   <b>{c.subject}</b>
-                </td>
-                <td className="muted">
-                  {c.areaFrom} → {c.areaTo}
                 </td>
                 <td className="muted">{c.timeOpenLabel}</td>
                 <td>
@@ -679,13 +710,22 @@ export function ControlCenter() {
           </div>
           <div className="cc-kpi-title">Checklists</div>
           <div className="cc-kpi-value">{data.checklistsSummary.completionRate}%</div>
-          <ProgressBar percent={data.checklistsSummary.completionRate} color="#3766f5" />
-          <div className="cc-kpi-foot">
-            <span>
-              {data.checklistsSummary.completed}/{data.checklistsSummary.totalToday} concluídos hoje
-            </span>
-            {data.checklistsSummary.overdue > 0 && <span className="cc-kpi-alert">{data.checklistsSummary.overdue} áreas em alerta</span>}
+          <div className="cc-kpi-cols">
+            <div className="cc-kpi-col">
+              <span className="cc-kpi-col-label">Concluídos</span>
+              <b>{data.checklistsSummary.completed}</b>
+            </div>
+            <div className="cc-kpi-col">
+              <span className="cc-kpi-col-label">Pendentes</span>
+              <b>{data.checklistsSummary.totalToday - data.checklistsSummary.completed}</b>
+            </div>
+            <div className="cc-kpi-col">
+              <span className="cc-kpi-col-label">Em alerta</span>
+              <b>{data.checklistsSummary.overdue}</b>
+            </div>
           </div>
+          <ProgressBar percent={data.checklistsSummary.completionRate} color="#3766f5" />
+          <div className="cc-kpi-total">Total: {data.checklistsSummary.totalToday} para hoje</div>
         </button>
 
         <button type="button" className="cc-kpi-card" onClick={() => setOpenKpi('serviceOrders')}>
@@ -697,11 +737,22 @@ export function ControlCenter() {
           </div>
           <div className="cc-kpi-title">Ordens de Serviço</div>
           <div className="cc-kpi-value">{data.serviceOrdersSummary.open}</div>
-          <ProgressBar percent={100 - (data.serviceOrdersSummary.overdue * 100) / Math.max(1, data.serviceOrdersSummary.open)} color="#d97706" />
-          <div className="cc-kpi-foot">
-            <span>{data.serviceOrdersSummary.inProgress} em andamento</span>
-            <span>Resolução média {data.serviceOrdersSummary.avgResolutionHours}h</span>
+          <div className="cc-kpi-cols">
+            <div className="cc-kpi-col">
+              <span className="cc-kpi-col-label">Em andamento</span>
+              <b>{data.serviceOrdersSummary.inProgress}</b>
+            </div>
+            <div className="cc-kpi-col">
+              <span className="cc-kpi-col-label">Atrasadas</span>
+              <b>{data.serviceOrdersSummary.overdue}</b>
+            </div>
+            <div className="cc-kpi-col">
+              <span className="cc-kpi-col-label">Concluídas</span>
+              <b>{data.serviceOrdersSummary.completedThisWeek}</b>
+            </div>
           </div>
+          <ProgressBar percent={100 - (data.serviceOrdersSummary.overdue * 100) / Math.max(1, data.serviceOrdersSummary.open)} color="#d97706" />
+          <div className="cc-kpi-total">Total: {data.serviceOrdersSummary.open} no mês</div>
         </button>
 
         <button type="button" className="cc-kpi-card" onClick={() => setOpenKpi('calls')}>
@@ -713,11 +764,22 @@ export function ControlCenter() {
           </div>
           <div className="cc-kpi-title">Chamados</div>
           <div className="cc-kpi-value">{data.callsSummary.open}</div>
-          <ProgressBar percent={Math.max(10, 100 - data.callsSummary.open * 8)} color="#7c3aed" />
-          <div className="cc-kpi-foot">
-            <span>{data.callsSummary.inProgress} em atendimento</span>
-            <span>Resposta média {data.callsSummary.avgResponseMinutes}min</span>
+          <div className="cc-kpi-cols">
+            <div className="cc-kpi-col">
+              <span className="cc-kpi-col-label">Em atendimento</span>
+              <b>{data.callsSummary.inProgress}</b>
+            </div>
+            <div className="cc-kpi-col">
+              <span className="cc-kpi-col-label">Alta prioridade</span>
+              <b>{data.callsSummary.highPriority}</b>
+            </div>
+            <div className="cc-kpi-col">
+              <span className="cc-kpi-col-label">Resp. média</span>
+              <b>{data.callsSummary.avgResponseMinutes}min</b>
+            </div>
           </div>
+          <ProgressBar percent={Math.max(10, 100 - data.callsSummary.open * 8)} color="#7c3aed" />
+          <div className="cc-kpi-total">Total: {data.callsSummary.open} no mês</div>
         </button>
 
         <button type="button" className="cc-kpi-card" onClick={() => setOpenKpi('operation')}>
@@ -729,13 +791,24 @@ export function ControlCenter() {
           </div>
           <div className="cc-kpi-title">Operação Geral</div>
           <div className="cc-kpi-value">{data.operationSummary.healthScore}%</div>
-          <ProgressBar percent={data.operationSummary.healthScore} color="#16a34a" />
-          <div className="cc-kpi-foot">
-            <span>
-              {data.operationSummary.sectorsNormal}/{data.operationSummary.sectorsTotal} setores normais
-            </span>
-            <span>{data.operationSummary.staffOnline} colaboradores online</span>
+          <div className="cc-kpi-cols">
+            <div className="cc-kpi-col">
+              <span className="cc-kpi-col-label">Setores normais</span>
+              <b>
+                {data.operationSummary.sectorsNormal}/{data.operationSummary.sectorsTotal}
+              </b>
+            </div>
+            <div className="cc-kpi-col">
+              <span className="cc-kpi-col-label">Alertas críticos</span>
+              <b>{data.operationSummary.criticalAlerts}</b>
+            </div>
+            <div className="cc-kpi-col">
+              <span className="cc-kpi-col-label">Online</span>
+              <b>{data.operationSummary.staffOnline}</b>
+            </div>
           </div>
+          <ProgressBar percent={data.operationSummary.healthScore} color="#16a34a" />
+          <div className="cc-kpi-total">Total: {data.operationSummary.sectorsTotal} setores monitorados</div>
         </button>
       </div>
 
@@ -752,24 +825,29 @@ export function ControlCenter() {
             )}
           </div>
           <div className="cc-area-grid-v">
-            {visibleAreas.map((a) => (
-              <button type="button" className="cc-area-card-v" key={a.areaId} onClick={() => setOpenArea(a)}>
-                <div className="cc-area-card-v-head">
-                  <Icon path={ICONS.area} size={16} />
-                  <span>{a.areaName}</span>
-                </div>
-                <Gauge percent={a.complianceRate} status={a.status} />
-                <div className="cc-area-card-v-status">
-                  <i style={{ background: SECTOR_STATUS_COLOR[a.status] }} />
-                  <span>{SECTOR_STATUS_LABEL[a.status]}</span>
-                </div>
-                <div className="cc-area-card-v-stats">
-                  <span>{a.pendingChecklists} pendentes</span>
-                  <span>{a.overdueServiceOrders} O.S. atrasadas</span>
-                  <span>{a.openCalls} chamados abertos</span>
-                </div>
-              </button>
-            ))}
+            {visibleAreas.map((a) => {
+              const icon = areaIcon(a.areaName);
+              return (
+                <button type="button" className="cc-area-card-v" key={a.areaId} onClick={() => setOpenArea(a)}>
+                  <div className="cc-area-card-v-head">
+                    <span className="cc-area-card-v-icon" style={{ background: icon.bg, color: icon.color }}>
+                      <Icon path={icon.path} size={13} />
+                    </span>
+                    <span>{a.areaName}</span>
+                  </div>
+                  <Gauge percent={a.complianceRate} status={a.status} />
+                  <div className="cc-area-card-v-status">
+                    <i style={{ background: SECTOR_STATUS_COLOR[a.status] }} />
+                    <span>{SECTOR_STATUS_LABEL[a.status]}</span>
+                  </div>
+                  <div className="cc-area-card-v-stats">
+                    <span>{a.pendingChecklists} pendentes</span>
+                    <span>{a.overdueServiceOrders} O.S. atrasadas</span>
+                    <span>{a.openCalls} chamados abertos</span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </section>
 
@@ -800,8 +878,8 @@ export function ControlCenter() {
         </section>
       </div>
 
-      <div className="cc-bottom-grid-equal" style={{ marginTop: 20 }}>
-        <section className="card">
+      <div className="cc-bottom-grid-3" style={{ marginTop: 20 }}>
+        <section className="card cc-bottom-card">
           <div className="cc-card-header-row">
             <div>
               <h2 className="card-title">Ordens de Serviço atrasadas</h2>
@@ -813,7 +891,7 @@ export function ControlCenter() {
               </button>
             )}
           </div>
-          <div className="table-wrap">
+          <div className="table-wrap cc-bottom-card-body">
             <table className="table">
               <thead>
                 <tr>
@@ -828,9 +906,6 @@ export function ControlCenter() {
                   <tr key={o.id} className="cc-row" onClick={() => setOpenServiceOrder(o)}>
                     <td>
                       <b>{o.description}</b>
-                      <div className="muted" style={{ fontSize: 11 }}>
-                        {o.areaName}
-                      </div>
                     </td>
                     <td className="muted">{o.assetName}</td>
                     <td>
@@ -844,7 +919,7 @@ export function ControlCenter() {
           </div>
         </section>
 
-        <section className="card">
+        <section className="card cc-bottom-card">
           <div className="cc-card-header-row">
             <div>
               <h2 className="card-title">Chamados em aberto</h2>
@@ -856,12 +931,11 @@ export function ControlCenter() {
               </button>
             )}
           </div>
-          <div className="table-wrap">
+          <div className="table-wrap cc-bottom-card-body">
             <table className="table">
               <thead>
                 <tr>
                   <th>Descrição</th>
-                  <th>De → Para</th>
                   <th>Tempo aberto</th>
                   <th>Prioridade</th>
                 </tr>
@@ -871,9 +945,6 @@ export function ControlCenter() {
                   <tr key={c.id} className="cc-row" onClick={() => setOpenCall(c)}>
                     <td>
                       <b>{c.subject}</b>
-                    </td>
-                    <td className="muted">
-                      {c.areaFrom} → {c.areaTo}
                     </td>
                     <td className="muted">{c.timeOpenLabel}</td>
                     <td>
@@ -887,40 +958,40 @@ export function ControlCenter() {
             </table>
           </div>
         </section>
-      </div>
 
-      <section className="card" style={{ marginTop: 20 }}>
-        <div className="cc-card-header-row">
-          <div>
-            <h2 className="card-title">Atividade Recente</h2>
-            <p className="card-sub">Últimos eventos de todos os módulos</p>
-          </div>
-          {data.activity.length > 5 && (
-            <button type="button" className="cc-link-btn" onClick={() => setShowActivityHistory(true)}>
-              Ver histórico
-            </button>
-          )}
-        </div>
-        <div className="timeline">
-          {visibleActivity.map((ev) => {
-            const { path, color } = activityIconAndColor(ev.type);
-            return (
-              <button type="button" key={ev.id} className="cc-activity-item" onClick={() => onActivityClick(ev)}>
-                <span className="cc-activity-icon" style={{ background: color + '1a', color }}>
-                  <Icon path={path} size={14} />
-                </span>
-                <div style={{ flex: 1, textAlign: 'left' }}>
-                  <div style={{ fontSize: 13 }}>{ev.title}</div>
-                  <div className="muted" style={{ fontSize: 11 }}>
-                    {ev.areaName} · {ev.timeLabel}
-                  </div>
-                </div>
-                <Icon path={ICONS.chevron} size={14} />
+        <section className="card cc-bottom-card">
+          <div className="cc-card-header-row">
+            <div>
+              <h2 className="card-title">Atividade Recente</h2>
+              <p className="card-sub">Últimos eventos de todos os módulos</p>
+            </div>
+            {data.activity.length > 5 && (
+              <button type="button" className="cc-link-btn" onClick={() => setShowActivityHistory(true)}>
+                Ver histórico
               </button>
-            );
-          })}
-        </div>
-      </section>
+            )}
+          </div>
+          <div className="timeline cc-bottom-card-body">
+            {visibleActivity.map((ev) => {
+              const { path, color } = activityIconAndColor(ev.type);
+              return (
+                <button type="button" key={ev.id} className="cc-activity-item" onClick={() => onActivityClick(ev)}>
+                  <span className="cc-activity-icon" style={{ background: color + '1a', color }}>
+                    <Icon path={path} size={14} />
+                  </span>
+                  <div style={{ flex: 1, textAlign: 'left' }}>
+                    <div style={{ fontSize: 13 }}>{ev.title}</div>
+                    <div className="muted" style={{ fontSize: 11 }}>
+                      {ev.areaName} · {ev.timeLabel}
+                    </div>
+                  </div>
+                  <Icon path={ICONS.chevron} size={14} />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      </div>
 
       {openKpi && <KpiDetailModal kind={openKpi} data={data} onClose={() => setOpenKpi(null)} />}
       {openArea && <AreaDetailModal area={openArea} onClose={() => setOpenArea(null)} />}
