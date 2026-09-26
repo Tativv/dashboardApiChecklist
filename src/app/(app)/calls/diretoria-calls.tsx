@@ -10,7 +10,7 @@ import { formatDateTime, todayIso } from '@/lib/format';
 import { CallListItemDto, CallPriority, CallStatus } from '@/types/api';
 import { priorityLabel, priorityClass, statusLabel, statusClass, CreateCallForm, CallCommentsModal, CallDetailModal } from './shared';
 
-const STATUS_BAR_COLOR: Record<CallStatus, string> = { Open: '#9a6700', InProgress: '#315bd6', Finished: '#16794e' };
+const STATUS_BAR_COLOR: Record<CallStatus, string> = { Open: '#64748b', InProgress: '#315bd6', Finished: '#16794e' };
 const CONVERTED_BAR_COLOR = '#7c3aed';
 
 const STORAGE_KEY = 'hotelops-call-service-order-links';
