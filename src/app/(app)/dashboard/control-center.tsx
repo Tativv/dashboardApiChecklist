@@ -12,7 +12,8 @@ import {
   type ServiceOrder,
   type OpenCall,
   type ActivityEvent,
-  type SectorStatus
+  type SectorStatus,
+  type MockPriority
 } from '@/features/control-center/mock';
 
 type KpiKind = 'checklists' | 'serviceOrders' | 'calls' | 'operation';
@@ -448,6 +449,148 @@ function ActivityDetailModal({ event, onClose }: { event: ActivityEvent; onClose
   );
 }
 
+function AllAreasModal({ areas, onSelect, onClose }: { areas: AreaMetrics[]; onSelect: (a: AreaMetrics) => void; onClose: () => void }) {
+  return (
+    <ModalShell title="Todas as áreas" subtitle={`${areas.length} áreas configuradas`} onClose={onClose} maxWidth={780}>
+      <div className="cc-area-grid">
+        {areas.map((a) => (
+          <button type="button" className="cc-area-card" key={a.areaId} onClick={() => onSelect(a)}>
+            <Gauge percent={a.complianceRate} status={a.status} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="cc-area-card-top">
+                <span className="list-card-title" style={{ fontSize: 13 }}>
+                  {a.areaName}
+                </span>
+                <StatusPill status={a.status} />
+              </div>
+              <div className="cc-area-card-stats">
+                <span>{a.pendingChecklists} pendentes</span>
+                <span>{a.openCalls} chamados</span>
+                <span>{a.overdueServiceOrders} O.S. atrasadas</span>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </ModalShell>
+  );
+}
+
+function AllServiceOrdersModal({
+  orders,
+  onSelect,
+  onClose
+}: {
+  orders: ServiceOrder[];
+  onSelect: (o: ServiceOrder) => void;
+  onClose: () => void;
+}) {
+  return (
+    <ModalShell title="Ordens de Serviço atrasadas" subtitle={`${orders.length} ordens`} onClose={onClose} maxWidth={740}>
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Descrição</th>
+              <th>Ativo</th>
+              <th>Dias em atraso</th>
+              <th>Responsável</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map((o) => (
+              <tr key={o.id} className="cc-row" onClick={() => onSelect(o)}>
+                <td>
+                  <b>{o.description}</b>
+                  <div className="muted" style={{ fontSize: 11 }}>
+                    {o.areaName}
+                  </div>
+                </td>
+                <td className="muted">{o.assetName}</td>
+                <td>
+                  <span className="status overdue">{o.daysOverdue}d</span>
+                </td>
+                <td className="muted">{o.responsibleName}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </ModalShell>
+  );
+}
+
+function AllCallsModal({ calls, onSelect, onClose }: { calls: OpenCall[]; onSelect: (c: OpenCall) => void; onClose: () => void }) {
+  return (
+    <ModalShell title="Chamados em aberto" subtitle={`${calls.length} chamados`} onClose={onClose} maxWidth={740}>
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Descrição</th>
+              <th>De → Para</th>
+              <th>Tempo aberto</th>
+              <th>Prioridade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {calls.map((c) => (
+              <tr key={c.id} className="cc-row" onClick={() => onSelect(c)}>
+                <td>
+                  <b>{c.subject}</b>
+                </td>
+                <td className="muted">
+                  {c.areaFrom} → {c.areaTo}
+                </td>
+                <td className="muted">{c.timeOpenLabel}</td>
+                <td>
+                  <span className={'status ' + (c.priority === 'Alta' ? 'overdue' : c.priority === 'Media' ? 'progress' : 'ready')}>
+                    {c.priority}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </ModalShell>
+  );
+}
+
+function ActivityHistoryModal({
+  events,
+  onSelect,
+  onClose
+}: {
+  events: ActivityEvent[];
+  onSelect: (ev: ActivityEvent) => void;
+  onClose: () => void;
+}) {
+  return (
+    <ModalShell title="Histórico de atividade" subtitle={`${events.length} eventos`} onClose={onClose}>
+      <div className="timeline">
+        {events.map((ev) => {
+          const { path, color } = activityIconAndColor(ev.type);
+          return (
+            <button type="button" key={ev.id} className="cc-activity-item" onClick={() => onSelect(ev)}>
+              <span className="cc-activity-icon" style={{ background: color + '1a', color }}>
+                <Icon path={path} size={14} />
+              </span>
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div style={{ fontSize: 13 }}>{ev.title}</div>
+                <div className="muted" style={{ fontSize: 11 }}>
+                  {ev.areaName} · {ev.timeLabel}
+                </div>
+              </div>
+              <Icon path={ICONS.chevron} size={14} />
+            </button>
+          );
+        })}
+      </div>
+    </ModalShell>
+  );
+}
+
 export function ControlCenter() {
   const user = useAuthStore((s) => s.user);
   const areasQuery = useAreas();
@@ -458,8 +601,22 @@ export function ControlCenter() {
   const [openServiceOrder, setOpenServiceOrder] = useState<ServiceOrder | null>(null);
   const [openCall, setOpenCall] = useState<OpenCall | null>(null);
   const [openActivity, setOpenActivity] = useState<ActivityEvent | null>(null);
+  const [showAllAreas, setShowAllAreas] = useState(false);
+  const [showAllServiceOrders, setShowAllServiceOrders] = useState(false);
+  const [showAllCalls, setShowAllCalls] = useState(false);
+  const [showActivityHistory, setShowActivityHistory] = useState(false);
 
   const data = useMemo(() => buildControlCenterData(areasQuery.data ?? []), [areasQuery.data]);
+
+  const priorityWeight: Record<MockPriority, number> = { Alta: 3, Media: 2, Baixa: 1 };
+  const sortedCalls = useMemo(
+    () => [...data.openCalls].sort((a, b) => priorityWeight[b.priority] - priorityWeight[a.priority]),
+    [data.openCalls]
+  );
+  const visibleAreas = data.areaMetrics.slice(0, 6);
+  const visibleServiceOrders = data.overdueServiceOrders.slice(0, 5);
+  const visibleCalls = sortedCalls.slice(0, 5);
+  const visibleActivity = data.activity.slice(0, 5);
 
   function onActivityClick(ev: ActivityEvent) {
     if (ev.relatedKind === 'serviceOrder') {
@@ -581,9 +738,16 @@ export function ControlCenter() {
         </button>
       </div>
 
-      <h2 className="cc-section-title">Desempenho por áreas</h2>
+      <div className="cc-section-header">
+        <h2 className="cc-section-title">Desempenho por áreas</h2>
+        {data.areaMetrics.length > 6 && (
+          <button type="button" className="cc-link-btn" onClick={() => setShowAllAreas(true)}>
+            Ver todas as áreas
+          </button>
+        )}
+      </div>
       <div className="cc-area-grid">
-        {data.areaMetrics.map((a) => (
+        {visibleAreas.map((a) => (
           <button type="button" className="cc-area-card" key={a.areaId} onClick={() => setOpenArea(a)}>
             <Gauge percent={a.complianceRate} status={a.status} />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -603,109 +767,141 @@ export function ControlCenter() {
         ))}
       </div>
 
-      <div className="cc-bottom-grid" style={{ marginTop: 26 }}>
-        <div style={{ display: 'grid', gap: 20 }}>
-          <section className="card">
-            <h2 className="card-title">Ordens de Serviço atrasadas</h2>
-            <p className="card-sub">Priorize pelo maior tempo de atraso</p>
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Descrição</th>
-                    <th>Ativo</th>
-                    <th>Dias em atraso</th>
-                    <th>Responsável</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.overdueServiceOrders.map((o) => (
-                    <tr key={o.id} className="cc-row" onClick={() => setOpenServiceOrder(o)}>
-                      <td>
-                        <b>{o.description}</b>
-                        <div className="muted" style={{ fontSize: 11 }}>
-                          {o.areaName}
-                        </div>
-                      </td>
-                      <td className="muted">{o.assetName}</td>
-                      <td>
-                        <span className="status overdue">{o.daysOverdue}d</span>
-                      </td>
-                      <td className="muted">{o.responsibleName}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="card">
-            <h2 className="card-title">Chamados em aberto</h2>
-            <p className="card-sub">Toque em um chamado para ver o histórico completo</p>
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Descrição</th>
-                    <th>De → Para</th>
-                    <th>Tempo aberto</th>
-                    <th>Prioridade</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.openCalls.map((c) => (
-                    <tr key={c.id} className="cc-row" onClick={() => setOpenCall(c)}>
-                      <td>
-                        <b>{c.subject}</b>
-                      </td>
-                      <td className="muted">
-                        {c.areaFrom} → {c.areaTo}
-                      </td>
-                      <td className="muted">{c.timeOpenLabel}</td>
-                      <td>
-                        <span className={'status ' + (c.priority === 'Alta' ? 'overdue' : c.priority === 'Media' ? 'progress' : 'ready')}>
-                          {c.priority}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-
-        <section className="card">
-          <h2 className="card-title">Status dos Setores</h2>
-          <p className="card-sub">Distribuição geral do resort</p>
-          <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0 18px' }}>
-            <div className="cc-donut" style={{ background: donutBackground }}>
-              <div className="cc-donut-inner">
+      <section className="card cc-sectors-strip" style={{ marginTop: 26 }}>
+        <div className="cc-sectors-strip-inner">
+          <div className="cc-sectors-strip-left">
+            <div className="cc-donut cc-donut-sm" style={{ background: donutBackground }}>
+              <div className="cc-donut-inner cc-donut-inner-sm">
                 <b>{data.operationSummary.sectorsTotal}</b>
-                <span>setores</span>
               </div>
             </div>
+            <div>
+              <div className="card-title" style={{ margin: 0 }}>
+                Status dos Setores
+              </div>
+              <p className="card-sub" style={{ margin: '2px 0 0' }}>
+                Distribuição geral do resort
+              </p>
+            </div>
           </div>
-          <div style={{ display: 'grid', gap: 8 }}>
+          <div className="cc-sectors-strip-legend">
             {(['Normal', 'Atencao', 'Critico'] as SectorStatus[]).map((status) => {
               const count = data.areaMetrics.filter((a) => a.status === status).length;
               return (
-                <div key={status} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                  <i style={{ width: 10, height: 10, borderRadius: 3, background: SECTOR_STATUS_COLOR[status], display: 'inline-block' }} />
-                  <span style={{ flex: 1 }}>{SECTOR_STATUS_LABEL[status]}</span>
+                <div key={status} className="cc-sectors-legend-item">
+                  <i style={{ background: SECTOR_STATUS_COLOR[status] }} />
+                  <span>{SECTOR_STATUS_LABEL[status]}</span>
                   <b>{count}</b>
                 </div>
               );
             })}
           </div>
+        </div>
+      </section>
+
+      <div className="cc-bottom-grid-equal" style={{ marginTop: 20 }}>
+        <section className="card">
+          <div className="cc-card-header-row">
+            <div>
+              <h2 className="card-title">Ordens de Serviço atrasadas</h2>
+              <p className="card-sub">Top 5 mais críticas</p>
+            </div>
+            {data.overdueServiceOrders.length > 5 && (
+              <button type="button" className="cc-link-btn" onClick={() => setShowAllServiceOrders(true)}>
+                Ver Todas
+              </button>
+            )}
+          </div>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Descrição</th>
+                  <th>Ativo</th>
+                  <th>Dias em atraso</th>
+                  <th>Responsável</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleServiceOrders.map((o) => (
+                  <tr key={o.id} className="cc-row" onClick={() => setOpenServiceOrder(o)}>
+                    <td>
+                      <b>{o.description}</b>
+                      <div className="muted" style={{ fontSize: 11 }}>
+                        {o.areaName}
+                      </div>
+                    </td>
+                    <td className="muted">{o.assetName}</td>
+                    <td>
+                      <span className="status overdue">{o.daysOverdue}d</span>
+                    </td>
+                    <td className="muted">{o.responsibleName}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="card">
+          <div className="cc-card-header-row">
+            <div>
+              <h2 className="card-title">Chamados em aberto</h2>
+              <p className="card-sub">Top 5 mais relevantes</p>
+            </div>
+            {data.openCalls.length > 5 && (
+              <button type="button" className="cc-link-btn" onClick={() => setShowAllCalls(true)}>
+                Ver todos
+              </button>
+            )}
+          </div>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Descrição</th>
+                  <th>De → Para</th>
+                  <th>Tempo aberto</th>
+                  <th>Prioridade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleCalls.map((c) => (
+                  <tr key={c.id} className="cc-row" onClick={() => setOpenCall(c)}>
+                    <td>
+                      <b>{c.subject}</b>
+                    </td>
+                    <td className="muted">
+                      {c.areaFrom} → {c.areaTo}
+                    </td>
+                    <td className="muted">{c.timeOpenLabel}</td>
+                    <td>
+                      <span className={'status ' + (c.priority === 'Alta' ? 'overdue' : c.priority === 'Media' ? 'progress' : 'ready')}>
+                        {c.priority}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
 
       <section className="card" style={{ marginTop: 20 }}>
-        <h2 className="card-title">Atividade Recente</h2>
-        <p className="card-sub">Eventos em tempo real de todos os módulos</p>
+        <div className="cc-card-header-row">
+          <div>
+            <h2 className="card-title">Atividade Recente</h2>
+            <p className="card-sub">Últimos eventos de todos os módulos</p>
+          </div>
+          {data.activity.length > 5 && (
+            <button type="button" className="cc-link-btn" onClick={() => setShowActivityHistory(true)}>
+              Ver histórico
+            </button>
+          )}
+        </div>
         <div className="timeline">
-          {data.activity.map((ev) => {
+          {visibleActivity.map((ev) => {
             const { path, color } = activityIconAndColor(ev.type);
             return (
               <button type="button" key={ev.id} className="cc-activity-item" onClick={() => onActivityClick(ev)}>
@@ -730,6 +926,46 @@ export function ControlCenter() {
       {openServiceOrder && <ServiceOrderDetailModal order={openServiceOrder} onClose={() => setOpenServiceOrder(null)} />}
       {openCall && <CallMockDetailModal call={openCall} onClose={() => setOpenCall(null)} />}
       {openActivity && <ActivityDetailModal event={openActivity} onClose={() => setOpenActivity(null)} />}
+      {showAllAreas && (
+        <AllAreasModal
+          areas={data.areaMetrics}
+          onSelect={(a) => {
+            setShowAllAreas(false);
+            setOpenArea(a);
+          }}
+          onClose={() => setShowAllAreas(false)}
+        />
+      )}
+      {showAllServiceOrders && (
+        <AllServiceOrdersModal
+          orders={data.overdueServiceOrders}
+          onSelect={(o) => {
+            setShowAllServiceOrders(false);
+            setOpenServiceOrder(o);
+          }}
+          onClose={() => setShowAllServiceOrders(false)}
+        />
+      )}
+      {showAllCalls && (
+        <AllCallsModal
+          calls={sortedCalls}
+          onSelect={(c) => {
+            setShowAllCalls(false);
+            setOpenCall(c);
+          }}
+          onClose={() => setShowAllCalls(false)}
+        />
+      )}
+      {showActivityHistory && (
+        <ActivityHistoryModal
+          events={data.activity}
+          onSelect={(ev) => {
+            setShowActivityHistory(false);
+            onActivityClick(ev);
+          }}
+          onClose={() => setShowActivityHistory(false)}
+        />
+      )}
     </div>
   );
 }
