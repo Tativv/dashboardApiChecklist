@@ -6,9 +6,12 @@ import { useAuthStore } from '@/features/auth/store';
 import { useAreas } from '@/features/areas/hooks';
 import { useDashboardReport, useByAreaReport } from '@/features/reports/hooks';
 import { useCalls } from '@/features/calls/hooks';
+import { useInstances, useInstance } from '@/features/checklist-instances/hooks';
+import { useUsers } from '@/features/users/hooks';
 import { roleLabel } from '@/components/ui/status-badge';
 import { todayIso, daysAgoIso, formatDateTime } from '@/lib/format';
 import { CallDetailModal, statusLabel as CALL_STATUS_LABEL, statusClass as CALL_STATUS_CLASS } from '../calls/shared';
+import type { ChecklistTaskExecutionDto } from '@/types/api';
 import {
   buildControlCenterData,
   SECTOR_STATUS_LABEL,
@@ -279,6 +282,86 @@ function KpiDetailModal({ kind, data, onClose }: { kind: KpiKind; data: ReturnTy
 const AREA_TABS = ['Resumo', 'Checklists', 'Ordens de Serviço', 'Chamados', 'Histórico'] as const;
 type AreaTab = (typeof AREA_TABS)[number];
 
+function AreaChecklistTaskRow({ task, userNameById }: { task: ChecklistTaskExecutionDto; userNameById: Map<string, string> }) {
+  const isDone = task.status === 'Completed' || task.status === 'Reviewed';
+  const isTaskOverdue = !isDone && !!task.scheduledForUtc && new Date(task.scheduledForUtc).getTime() < Date.now();
+  const responsibleId = task.executedByUserId ?? task.assignedUserId ?? null;
+  const responsibleName = responsibleId ? (userNameById.get(responsibleId) ?? 'Não identificado') : 'Não designado';
+
+  return (
+    <div className="list-card">
+      <div className="list-card-top">
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span className={'cc-task-checkbox' + (isDone ? ' done' : '')}>{isDone && <Icon path={ICONS.checklist} size={11} />}</span>
+          <span className="list-card-title" style={{ fontWeight: isDone ? 500 : 600 }}>
+            {task.taskName}
+          </span>
+        </span>
+      </div>
+      {isTaskOverdue && (
+        <div className="list-card-meta" style={{ marginTop: 8 }}>
+          <span className="status overdue">Atrasada</span>
+          <span>Responsável: {responsibleName}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AreaChecklistInstanceCard({
+  instanceId,
+  templateName,
+  assetName,
+  userNameById
+}: {
+  instanceId: string;
+  templateName: string;
+  assetName: string;
+  userNameById: Map<string, string>;
+}) {
+  const detail = useInstance(instanceId);
+  const tasks = [...(detail.data?.taskExecutions ?? [])].sort((a, b) => a.order - b.order);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <b style={{ fontSize: 13 }}>{templateName}</b>
+        <span className="muted" style={{ fontSize: 12 }}>
+          {assetName}
+        </span>
+      </div>
+      {detail.isLoading && <p className="muted" style={{ fontSize: 12 }}>Carregando…</p>}
+      <div className="card-list">
+        {tasks.map((t) => (
+          <AreaChecklistTaskRow key={t.id} task={t} userNameById={userNameById} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AreaChecklistsTab({ areaId }: { areaId: string }) {
+  const today = todayIso();
+  const instancesQuery = useInstances({ areaId, fromDate: today, toDate: today });
+  const usersQuery = useUsers({ active: true });
+  const userNameById = useMemo(() => new Map((usersQuery.data ?? []).map((u) => [u.id, u.name])), [usersQuery.data]);
+  const instances = instancesQuery.data ?? [];
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      {instancesQuery.isLoading && <p className="muted" style={{ fontSize: 13 }}>Carregando…</p>}
+      {!instancesQuery.isLoading && instances.length === 0 && (
+        <div className="card empty">Nenhum checklist programado para hoje nesta área.</div>
+      )}
+      <div style={{ display: 'grid', gap: 20 }}>
+        {instances.map((i) => (
+          <AreaChecklistInstanceCard key={i.id} instanceId={i.id} templateName={i.templateName} assetName={i.assetName} userNameById={userNameById} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AreaDetailModal({ area, onClose }: { area: AreaMetrics; onClose: () => void }) {
   const [tab, setTab] = useState<AreaTab>('Resumo');
 
@@ -316,26 +399,7 @@ function AreaDetailModal({ area, onClose }: { area: AreaMetrics; onClose: () => 
         </div>
       )}
 
-      {tab === 'Checklists' && (
-        <div style={{ marginTop: 16 }}>
-          <p className="muted" style={{ fontSize: 13 }}>
-            {area.pendingChecklists} checklist(s) pendente(s) nesta área hoje.
-          </p>
-          <div className="card-list">
-            {Array.from({ length: Math.max(1, area.pendingChecklists) }).map((_, i) => (
-              <div className="list-card" key={i}>
-                <div className="list-card-top">
-                  <span className="list-card-title">Checklist diário — Setor {area.areaName}</span>
-                  <span className="status pending">Pendente</span>
-                </div>
-                <div className="list-card-meta" style={{ marginTop: 8 }}>
-                  <span>Turno {i % 2 === 0 ? 'manhã' : 'tarde'}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {tab === 'Checklists' && <AreaChecklistsTab areaId={area.areaId} />}
 
       {tab === 'Ordens de Serviço' && (
         <div style={{ marginTop: 16 }}>
