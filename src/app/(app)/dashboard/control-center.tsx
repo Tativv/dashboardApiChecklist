@@ -826,6 +826,15 @@ export function ControlCenter() {
               </button>
             )}
           </div>
+          {areasQuery.isLoading && <p className="muted" style={{ fontSize: 13 }}>Carregando áreas…</p>}
+          {!areasQuery.isLoading && data.areaMetrics.length === 0 && (
+            <div className="card empty">
+              Nenhuma área configurada ainda.{' '}
+              <Link href="/areas" className="cc-link-btn" style={{ display: 'inline' }}>
+                Configurar áreas
+              </Link>
+            </div>
+          )}
           <div className="cc-area-grid-v">
             {visibleAreas.map((a) => {
               const icon = areaIcon(a.areaName);

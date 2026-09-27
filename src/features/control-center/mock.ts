@@ -286,10 +286,13 @@ function buildActivity(areaNames: string[], serviceOrders: ServiceOrder[], openC
 }
 
 export function buildControlCenterData(realAreas: { id: string; name: string }[], real?: ControlCenterRealInputs): ControlCenterData {
-  const areas = realAreas.length > 0 ? realAreas : FALLBACK_AREAS.map((name, i) => ({ id: `mock-area-${i}`, name }));
-  const areaNames = areas.map((a) => a.name);
+  // areaMetrics representa áreas reais configuradas no sistema — nunca inventa áreas.
+  // Quando não há áreas reais, usa-se um conjunto de nomes só para dar contexto aos
+  // dados mockados de Ordens de Serviço/Atividade (que não têm área real de todo jeito).
+  const flavorAreas = realAreas.length > 0 ? realAreas : FALLBACK_AREAS.map((name, i) => ({ id: `mock-area-${i}`, name }));
+  const areaNames = flavorAreas.map((a) => a.name);
 
-  const areaMetrics = buildAreaMetrics(areas, real);
+  const areaMetrics = buildAreaMetrics(realAreas, real);
   const serviceOrders = buildServiceOrders(areaNames);
   const overdueServiceOrders = [...serviceOrders].sort((a, b) => b.daysOverdue - a.daysOverdue);
   const calls = real?.calls ?? [];
