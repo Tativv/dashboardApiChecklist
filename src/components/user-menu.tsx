@@ -1,12 +1,9 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { AuthUser } from '@/features/auth/store';
-import { useChangePassword } from '@/features/auth/hooks';
 import { useAreas } from '@/features/areas/hooks';
 import { useUser } from '@/features/users/hooks';
 import { roleLabel } from '@/components/ui/status-badge';
-import { ErrorBanner } from '@/components/ui/error-banner';
-import { toApiError, fieldError } from '@/lib/api-error';
 
 function initials(name: string): string {
   return name
@@ -109,81 +106,12 @@ function MeuPerfilModal({ user, loginAt, onClose }: { user: AuthUser; loginAt: s
 }
 
 function AlterarSenhaModal({ onClose }: { onClose: () => void }) {
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const changePassword = useChangePassword();
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (newPassword.length < 8) {
-      setError('A nova senha deve ter ao menos 8 caracteres.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError('A confirmação não coincide com a nova senha.');
-      return;
-    }
-    try {
-      await changePassword.mutateAsync({ currentPassword, newPassword });
-      onClose();
-    } catch (err) {
-      setError(toApiError(err).message);
-    }
-  }
-
   return (
-    <ModalShell title="Alterar Senha" subtitle="Defina uma nova senha de acesso" onClose={onClose}>
-      <ErrorBanner message={error} />
-      <form onSubmit={onSubmit}>
-        <div style={{ display: 'grid', gap: 14 }}>
-          <div className="field">
-            <label>Senha atual</label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-            {fieldError(changePassword.error, 'CurrentPassword') && (
-              <span className="field-error">{fieldError(changePassword.error, 'CurrentPassword')}</span>
-            )}
-          </div>
-          <div className="field">
-            <label>Nova senha</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
-          </div>
-          <div className="field">
-            <label>Confirmar nova senha</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
-          </div>
-        </div>
-        <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
-            Cancelar
-          </button>
-          <button className="btn btn-primary" disabled={changePassword.isPending}>
-            {changePassword.isPending ? 'Salvando…' : 'Salvar nova senha'}
-          </button>
-        </div>
-      </form>
+    <ModalShell title="Alterar Senha" subtitle="Segurança da conta" onClose={onClose}>
+      <p className="muted" style={{ fontSize: 13.5 }}>
+        A troca de senha pelo próprio usuário ainda não está disponível — o backend não expõe essa funcionalidade no
+        momento. Para redefinir sua senha, peça a um administrador que atualize seu acesso.
+      </p>
     </ModalShell>
   );
 }
