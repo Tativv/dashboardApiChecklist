@@ -362,7 +362,75 @@ function AreaChecklistsTab({ areaId }: { areaId: string }) {
   );
 }
 
-function AreaDetailModal({ area, onClose }: { area: AreaMetrics; onClose: () => void }) {
+const AREA_NAMES_WITHOUT_CALL_LIST = ['manutencao', 'governanca'];
+
+function normalizeAreaName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+}
+
+function AreaCallsTab({ area, onViewCall }: { area: AreaMetrics; onViewCall: (id: string) => void }) {
+  const callsQuery = useCalls({ areaId: area.areaId });
+  const showRealList = !AREA_NAMES_WITHOUT_CALL_LIST.includes(normalizeAreaName(area.areaName));
+
+  if (!showRealList) {
+    return (
+      <div style={{ marginTop: 16 }}>
+        <p className="muted" style={{ fontSize: 13 }}>
+          {area.openCalls} chamado(s) em aberto nesta área.
+        </p>
+        {area.openCalls === 0 && <div className="card empty">Nenhum chamado em aberto nesta área.</div>}
+      </div>
+    );
+  }
+
+  const calls = (callsQuery.data ?? []).filter((c) => c.status !== 'Finished');
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      {callsQuery.isLoading && <p className="muted" style={{ fontSize: 13 }}>Carregando…</p>}
+      {!callsQuery.isLoading && calls.length === 0 && <div className="card empty">Nenhum chamado em aberto nesta área.</div>}
+      {calls.length > 0 && (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Descrição</th>
+                <th>Aberto por</th>
+                <th>Status</th>
+                <th>Prioridade</th>
+                <th>Aberto em</th>
+              </tr>
+            </thead>
+            <tbody>
+              {calls.map((c) => (
+                <tr key={c.id} className="cc-row" onClick={() => onViewCall(c.id)}>
+                  <td>
+                    <b>{c.subject}</b>
+                  </td>
+                  <td className="muted">{c.createdByUserName}</td>
+                  <td>
+                    <span className={'status ' + CALL_STATUS_CLASS[c.status]}>{CALL_STATUS_LABEL[c.status]}</span>
+                  </td>
+                  <td>
+                    <span className={'status ' + (c.priority === 'Alta' ? 'overdue' : c.priority === 'Media' ? 'progress' : 'ready')}>
+                      {c.priority}
+                    </span>
+                  </td>
+                  <td className="muted">{formatDateTime(c.createdAtUtc)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AreaDetailModal({ area, onClose, onViewCall }: { area: AreaMetrics; onClose: () => void; onViewCall: (id: string) => void }) {
   const [tab, setTab] = useState<AreaTab>('Resumo');
 
   return (
@@ -410,14 +478,7 @@ function AreaDetailModal({ area, onClose }: { area: AreaMetrics; onClose: () => 
         </div>
       )}
 
-      {tab === 'Chamados' && (
-        <div style={{ marginTop: 16 }}>
-          <p className="muted" style={{ fontSize: 13 }}>
-            {area.openCalls} chamado(s) em aberto nesta área.
-          </p>
-          {area.openCalls === 0 && <div className="card empty">Nenhum chamado em aberto nesta área.</div>}
-        </div>
-      )}
+      {tab === 'Chamados' && <AreaCallsTab area={area} onViewCall={onViewCall} />}
 
       {tab === 'Histórico' && (
         <div className="timeline" style={{ marginTop: 16 }}>
@@ -1000,7 +1061,16 @@ export function ControlCenter() {
       </div>
 
       {openKpi && <KpiDetailModal kind={openKpi} data={data} onClose={() => setOpenKpi(null)} />}
-      {openArea && <AreaDetailModal area={openArea} onClose={() => setOpenArea(null)} />}
+      {openArea && (
+        <AreaDetailModal
+          area={openArea}
+          onClose={() => setOpenArea(null)}
+          onViewCall={(id) => {
+            setOpenArea(null);
+            setOpenCallId(id);
+          }}
+        />
+      )}
       {openServiceOrder && <ServiceOrderDetailModal order={openServiceOrder} onClose={() => setOpenServiceOrder(null)} />}
       {openCallId && <CallDetailModal id={openCallId} onClose={() => setOpenCallId(null)} />}
       {openActivity && <ActivityDetailModal event={openActivity} onClose={() => setOpenActivity(null)} />}
