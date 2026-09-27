@@ -573,6 +573,60 @@ function ActivityDetailModal({ event, onClose }: { event: ActivityEvent; onClose
   );
 }
 
+function SectorsStatusModal({
+  areas,
+  onSelectArea,
+  onClose
+}: {
+  areas: AreaMetrics[];
+  onSelectArea: (a: AreaMetrics) => void;
+  onClose: () => void;
+}) {
+  return (
+    <ModalShell title="Status dos Setores" subtitle="Áreas agrupadas por status" onClose={onClose} maxWidth={600}>
+      {(['Normal', 'Atencao', 'Critico'] as SectorStatus[]).map((status) => {
+        const list = areas.filter((a) => a.status === status);
+        return (
+          <div key={status} style={{ marginBottom: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <i style={{ width: 10, height: 10, borderRadius: 3, background: SECTOR_STATUS_COLOR[status], display: 'inline-block' }} />
+              <b style={{ fontSize: 13 }}>{SECTOR_STATUS_LABEL[status]}</b>
+              <span className="muted" style={{ fontSize: 12 }}>
+                ({list.length})
+              </span>
+            </div>
+            {list.length === 0 && (
+              <p className="muted" style={{ fontSize: 12, marginLeft: 18 }}>
+                Nenhuma área neste status.
+              </p>
+            )}
+            {list.length > 0 && (
+              <div className="card-list">
+                {list.map((a) => (
+                  <button
+                    type="button"
+                    key={a.areaId}
+                    className="list-card"
+                    style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                    onClick={() => onSelectArea(a)}
+                  >
+                    <div className="list-card-top">
+                      <span className="list-card-title">{a.areaName}</span>
+                      <span className="muted" style={{ fontSize: 12 }}>
+                        {a.complianceRate}%
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </ModalShell>
+  );
+}
+
 function AllAreasModal({ areas, onSelect, onClose }: { areas: AreaMetrics[]; onSelect: (a: AreaMetrics) => void; onClose: () => void }) {
   const [search, setSearch] = useState('');
   const term = search.trim().toLowerCase();
@@ -665,6 +719,7 @@ export function ControlCenter() {
   const [openActivity, setOpenActivity] = useState<ActivityEvent | null>(null);
   const [showAllAreas, setShowAllAreas] = useState(false);
   const [showActivityHistory, setShowActivityHistory] = useState(false);
+  const [showSectorsDetail, setShowSectorsDetail] = useState(false);
 
   const dashboardReportQuery = useDashboardReport({ today: date });
   const byAreaReportQuery = useByAreaReport({ fromDate: shiftDateIso(date, -6), toDate: date });
@@ -927,7 +982,7 @@ export function ControlCenter() {
           </div>
         </section>
 
-        <section className="card cc-sectors-card">
+        <section className="card cc-sectors-card" style={{ cursor: 'pointer' }} onClick={() => setShowSectorsDetail(true)}>
           <h2 className="card-title" style={{ margin: 0 }}>
             Status dos Setores
           </h2>
@@ -1096,6 +1151,16 @@ export function ControlCenter() {
             onActivityClick(ev);
           }}
           onClose={() => setShowActivityHistory(false)}
+        />
+      )}
+      {showSectorsDetail && (
+        <SectorsStatusModal
+          areas={data.areaMetrics}
+          onSelectArea={(a) => {
+            setShowSectorsDetail(false);
+            setOpenArea(a);
+          }}
+          onClose={() => setShowSectorsDetail(false)}
         />
       )}
     </div>
