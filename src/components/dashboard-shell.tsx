@@ -62,7 +62,7 @@ type DiretoriaNavItem = { href: string; label: string; icon: string; openParam?:
 const DIRETORIA_MAIN_NAV: DiretoriaNavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: DIRETORIA_ICON_PATHS.dashboard },
   { href: '/checklists', label: 'Checklist', icon: DIRETORIA_ICON_PATHS.checklist },
-  { href: '/dashboard?open=serviceOrders', label: 'Ordens de Serviço', icon: DIRETORIA_ICON_PATHS.wrench, openParam: 'serviceOrders' },
+  { href: '/service-orders', label: 'Ordens de Serviço', icon: DIRETORIA_ICON_PATHS.wrench },
   { href: '/calls', label: 'Chamados', icon: DIRETORIA_ICON_PATHS.phone },
   { href: '/reports', label: 'Relatórios', icon: DIRETORIA_ICON_PATHS.reports }
 ];
@@ -117,6 +117,7 @@ function DiretoriaNav({ pathname }: { pathname: string }) {
 const DIRETORIA_CRUMB_OVERRIDES: Record<string, string> = {
   '/dashboard': 'Centro de Controle Operacional',
   '/checklists': 'Checklist',
+  '/service-orders': 'Ordens de Serviço',
   '/calls': 'Chamados',
   '/reports': 'Relatórios',
   '/areas': 'Administração · Áreas',
