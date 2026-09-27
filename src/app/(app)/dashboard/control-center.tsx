@@ -445,10 +445,23 @@ function ActivityDetailModal({ event, onClose }: { event: ActivityEvent; onClose
 }
 
 function AllAreasModal({ areas, onSelect, onClose }: { areas: AreaMetrics[]; onSelect: (a: AreaMetrics) => void; onClose: () => void }) {
+  const [search, setSearch] = useState('');
+  const term = search.trim().toLowerCase();
+  const filtered = term ? areas.filter((a) => a.areaName.toLowerCase().includes(term)) : areas;
+
   return (
     <ModalShell title="Todas as áreas" subtitle={`${areas.length} áreas configuradas`} onClose={onClose} maxWidth={780}>
+      <input
+        type="search"
+        className="search"
+        placeholder="Buscar área…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        style={{ width: '100%', marginBottom: 16 }}
+      />
+      {filtered.length === 0 && <div className="card empty">Nenhuma área encontrada.</div>}
       <div className="cc-area-grid">
-        {areas.map((a) => {
+        {filtered.map((a) => {
           const icon = areaIcon(a.areaName);
           return (
             <button type="button" className="cc-area-card" key={a.areaId} onClick={() => onSelect(a)}>
