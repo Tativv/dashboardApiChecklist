@@ -12,6 +12,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toApiError } from '@/lib/api-error';
 import { formatDate, formatDuration, todayIso } from '@/lib/format';
 import { ChecklistStatus } from '@/types/api';
+import { DiretoriaChecklists } from './diretoria-checklists';
 
 const statusOptions: (ChecklistStatus | 'Todos')[] = ['Todos', 'Pending', 'InProgress', 'Completed'];
 const statusLabels: Record<string, string> = {
@@ -88,7 +89,7 @@ function CreateInstancePanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-export default function ChecklistsPage() {
+function StandardChecklists() {
   const user = useAuthStore((s) => s.user);
   const canManageInstances = isSupervisorOrAbove(user?.role);
   const isSupervisor = isExactlySupervisor(user?.role);
@@ -224,4 +225,9 @@ export default function ChecklistsPage() {
       </div>
     </div>
   );
+}
+
+export default function ChecklistsPage() {
+  const user = useAuthStore((s) => s.user);
+  return user?.role === 'Directoria' ? <DiretoriaChecklists /> : <StandardChecklists />;
 }
