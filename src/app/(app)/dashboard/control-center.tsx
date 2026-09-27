@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/features/auth/store';
 import { useAreas } from '@/features/areas/hooks';
@@ -517,48 +518,6 @@ function AllServiceOrdersModal({
   );
 }
 
-function AllCallsModal({ calls, onSelect, onClose }: { calls: OpenCall[]; onSelect: (c: OpenCall) => void; onClose: () => void }) {
-  return (
-    <ModalShell title="Chamados em aberto" subtitle={`${calls.length} chamados`} onClose={onClose} maxWidth={780}>
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Descrição</th>
-              <th>Responsável</th>
-              <th>Status</th>
-              <th>Prioridade</th>
-              <th>Aberto em</th>
-            </tr>
-          </thead>
-          <tbody>
-            {calls.map((c) => (
-              <tr key={c.id} className="cc-row" onClick={() => onSelect(c)}>
-                <td>
-                  <b>{c.subject}</b>
-                  <div className="muted" style={{ fontSize: 11 }}>
-                    {c.areaName}
-                  </div>
-                </td>
-                <td className="muted">{c.assignedUserName ?? 'Não designado'}</td>
-                <td>
-                  <span className={'status ' + CALL_STATUS_CLASS[c.status]}>{CALL_STATUS_LABEL[c.status]}</span>
-                </td>
-                <td>
-                  <span className={'status ' + (c.priority === 'Alta' ? 'overdue' : c.priority === 'Media' ? 'progress' : 'ready')}>
-                    {c.priority}
-                  </span>
-                </td>
-                <td className="muted">{formatDateTime(c.createdAtUtc)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </ModalShell>
-  );
-}
-
 function ActivityHistoryModal({
   events,
   onSelect,
@@ -605,7 +564,6 @@ export function ControlCenter() {
   const [openActivity, setOpenActivity] = useState<ActivityEvent | null>(null);
   const [showAllAreas, setShowAllAreas] = useState(false);
   const [showAllServiceOrders, setShowAllServiceOrders] = useState(false);
-  const [showAllCalls, setShowAllCalls] = useState(false);
   const [showActivityHistory, setShowActivityHistory] = useState(false);
 
   const today = todayIso();
@@ -933,11 +891,9 @@ export function ControlCenter() {
               <h2 className="card-title">Chamados em aberto</h2>
               <p className="card-sub">Top 5 mais relevantes</p>
             </div>
-            {data.openCalls.length > 5 && (
-              <button type="button" className="cc-link-btn" onClick={() => setShowAllCalls(true)}>
-                Ver todos
-              </button>
-            )}
+            <Link href="/calls" className="cc-link-btn">
+              Ver todos
+            </Link>
           </div>
           <div className="table-wrap cc-bottom-card-body">
             <table className="table">
@@ -1029,16 +985,6 @@ export function ControlCenter() {
             setOpenServiceOrder(o);
           }}
           onClose={() => setShowAllServiceOrders(false)}
-        />
-      )}
-      {showAllCalls && (
-        <AllCallsModal
-          calls={sortedCalls}
-          onSelect={(c) => {
-            setShowAllCalls(false);
-            setOpenCallId(c.id);
-          }}
-          onClose={() => setShowAllCalls(false)}
         />
       )}
       {showActivityHistory && (
