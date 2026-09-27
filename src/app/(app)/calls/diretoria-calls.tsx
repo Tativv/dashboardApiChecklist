@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCalls, useCall, useAssignCall, useStartCall, useFinishCall } from '@/features/calls/hooks';
 import { useAreas } from '@/features/areas/hooks';
 import { useUsers } from '@/features/users/hooks';
@@ -43,15 +43,15 @@ function saveLinks(links: Record<string, ServiceOrderLink>) {
   }
 }
 
-function elapsedLabel(iso: string): string {
+function elapsedShort(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return 'agora mesmo';
-  if (minutes < 60) return `há ${minutes} min`;
+  if (minutes < 1) return 'poucos segundos';
+  if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `há ${hours}h`;
+  if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
-  return `há ${days} dia${days === 1 ? '' : 's'}`;
+  return `${days} dia${days === 1 ? '' : 's'}`;
 }
 
 function Icon({ path, size = 18 }: { path: string; size?: number }) {
@@ -62,11 +62,33 @@ function Icon({ path, size = 18 }: { path: string; size?: number }) {
   );
 }
 
+function EyeIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function DotsIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="5" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="12" cy="19" r="1.8" />
+    </svg>
+  );
+}
+
 const ICONS = {
   open: 'M12 8v4l3 3M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
   inProgress: 'M21 12a9 9 0 1 1-9-9c2.52 0 4.85.99 6.57 2.64M21 3v6h-6',
   finished: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
-  critical: 'M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01'
+  critical: 'M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01',
+  chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+  wrench:
+    'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'
 };
 
 type QuickFilter = 'all' | 'open' | 'in-progress' | 'critical' | 'converted-os' | 'finished';
@@ -236,6 +258,17 @@ function DiretoriaCallCard({
   const finishCall = useFinishCall();
   const detail = useCall(call.id);
   const pending = assignCall.isPending || startCall.isPending || finishCall.isPending;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDocClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [menuOpen]);
 
   async function run(action: () => Promise<unknown>) {
     onError('');
@@ -247,33 +280,34 @@ function DiretoriaCallCard({
   }
 
   const accentColor = link ? CONVERTED_BAR_COLOR : STATUS_BAR_COLOR[call.status];
-  const statusBadge = link ? { label: 'Convertido em OS', className: 'status ready' } : { label: statusLabel[call.status], className: 'status ' + statusClass[call.status] };
+  const statusBadge = link
+    ? { label: 'Convertido em OS', className: 'status ready' }
+    : { label: statusLabel[call.status], className: 'status ' + statusClass[call.status] };
   const description = detail.data?.description?.trim();
+  const canStart = call.status === 'Open' && !!call.assignedUserId;
+  const canFinish = call.status === 'InProgress';
 
   return (
     <div className="dc-card" style={{ borderLeftColor: accentColor }}>
-      <div className="dc-card-header">
-        <div className="dc-card-heading">
-          <div className="dc-card-title">{call.subject}</div>
-          <div className="dc-card-area">{call.areaName}</div>
+      <div className="dc-card-col dc-card-col-info">
+        <div className="dc-card-title">{call.subject}</div>
+        <div className="dc-card-area-row">
+          <span>{call.areaName}</span>
+          <span className="dc-card-dot">&middot;</span>
+          <span>{call.createdByUserName}</span>
         </div>
+        <p className="dc-card-desc">{description || (detail.isLoading ? '' : 'Sem descrição.')}</p>
+      </div>
+
+      <div className="dc-card-col dc-card-col-status">
         <div className="dc-card-badges">
           <span className={'status ' + priorityClass[call.priority]}>{priorityLabel[call.priority]}</span>
           <span className={statusBadge.className}>{statusBadge.label}</span>
         </div>
-      </div>
-
-      <div className="dc-card-info">
-        <span>Aberto por {call.createdByUserName}</span>
-        <span className="dc-card-dot">·</span>
-        <span>{elapsedLabel(call.createdAtUtc)}</span>
-      </div>
-
-      <p className="dc-card-desc">{description || (detail.isLoading ? ' ' : 'Sem descrição.')}</p>
-
-      <div className="dc-card-footer">
+        <div className="dc-card-elapsed">
+          <Icon path={ICONS.open} size={13} /> Aberto há {elapsedShort(call.createdAtUtc)}
+        </div>
         <div className="dc-card-responsible">
-          <span className="dc-card-meta-label">Responsável</span>
           <SearchableSelect
             value={call.assignedUserId ?? ''}
             disabled={pending || call.status === 'Finished'}
@@ -283,33 +317,58 @@ function DiretoriaCallCard({
             options={assignableUsers.map((u) => ({ value: u.id, label: u.name }))}
           />
         </div>
+      </div>
 
-        <div className="dc-card-actions">
-          {call.status === 'Open' && call.assignedUserId && (
-            <button className="btn btn-secondary btn-sm" disabled={pending} onClick={() => run(() => startCall.mutateAsync(call.id))}>
-              Iniciar
-            </button>
-          )}
-          {call.status === 'InProgress' && (
-            <button className="btn btn-primary btn-sm" disabled={pending} onClick={() => run(() => finishCall.mutateAsync(call.id))}>
-              Finalizar Chamado
-            </button>
-          )}
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => onView(call.id)}>
-            Ver Detalhes
+      <div className="dc-card-col dc-card-col-actions">
+        <button type="button" className="icon-btn" title="Ver detalhes" onClick={() => onView(call.id)}>
+          <EyeIcon />
+        </button>
+        <button type="button" className="icon-btn" title="Comentários" onClick={() => onComments(call)}>
+          <Icon path={ICONS.chat} size={16} />
+          {call.commentCount > 0 && <span className="icon-badge">{call.commentCount}</span>}
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => (link ? onViewLink(link) : onConvert(call))}
+          disabled={!link && call.status === 'Finished'}
+        >
+          <Icon path={ICONS.wrench} size={13} /> {link ? 'Ver OS' : 'Converter em OS'}
+        </button>
+        <div className="dc-card-menu" ref={menuRef}>
+          <button type="button" className="icon-btn" title="Mais ações" onClick={() => setMenuOpen((v) => !v)}>
+            <DotsIcon />
           </button>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => onComments(call)}>
-            Comentários{call.commentCount > 0 ? ` (${call.commentCount})` : ''}
-          </button>
-          {!link && call.status !== 'Finished' && (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => onConvert(call)}>
-              Converter em OS
-            </button>
-          )}
-          {link && (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => onViewLink(link)}>
-              Ver OS
-            </button>
+          {menuOpen && (
+            <div className="dc-card-menu-dropdown">
+              {canStart && (
+                <button
+                  type="button"
+                  className="dc-card-menu-item"
+                  disabled={pending}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    run(() => startCall.mutateAsync(call.id));
+                  }}
+                >
+                  Iniciar
+                </button>
+              )}
+              {canFinish && (
+                <button
+                  type="button"
+                  className="dc-card-menu-item"
+                  disabled={pending}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    run(() => finishCall.mutateAsync(call.id));
+                  }}
+                >
+                  Finalizar Chamado
+                </button>
+              )}
+              {!canStart && !canFinish && <span className="dc-card-menu-empty">Nenhuma ação disponível</span>}
+            </div>
           )}
         </div>
       </div>
