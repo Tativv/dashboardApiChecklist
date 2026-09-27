@@ -1,10 +1,13 @@
-// Dados mockados do Centro de Controle Operacional (visão Diretoria).
-// Nada aqui lê nem escreve no backend — é só a estrutura visual, pronta para
-// ser trocada por chamadas reais (Dashboard/ByArea/ByDate/Calls) quando o
-// módulo de Ordens de Serviço existir de fato no sistema.
+// Dados do Centro de Controle Operacional (visão Diretoria).
+// Checklists e Chamados usam dados reais do backend (passados via o parâmetro
+// `real`, calculados em control-center.tsx a partir de useDashboardReport,
+// useByAreaReport e useCalls). Apenas Ordens de Serviço permanece mockado —
+// esse módulo não existe de fato no backend (confirmado em auditoria do
+// repositório apiChecklist: nenhuma entidade, migração ou endpoint relacionado).
 
 export type SectorStatus = 'Normal' | 'Atencao' | 'Critico';
 export type MockPriority = 'Baixa' | 'Media' | 'Alta';
+export type CallStatusValue = 'Open' | 'InProgress' | 'Finished';
 
 export interface AreaMetrics {
   areaId: string;
@@ -36,20 +39,19 @@ export interface ServiceOrder {
   history: ServiceOrderHistoryEntry[];
 }
 
-export interface OpenCallComment {
-  author: string;
-  timeLabel: string;
-  text: string;
-}
-
 export interface OpenCall {
   id: string;
+  areaId: string;
+  areaName: string;
   subject: string;
-  areaFrom: string;
-  areaTo: string;
-  timeOpenLabel: string;
   priority: MockPriority;
-  comments: OpenCallComment[];
+  status: CallStatusValue;
+  createdByUserName: string;
+  assignedUserName?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  createdAtUtc: string;
+  commentCount: number;
 }
 
 export type ActivityEventType =
@@ -104,6 +106,25 @@ export interface ControlCenterData {
     criticalAlerts: number;
     staffOnline: number;
   };
+}
+
+export interface RealAreaChecklistStat {
+  areaId: string;
+  complianceRate: number;
+  pendingChecklists: number;
+}
+
+export interface RealChecklistsSummaryInput {
+  totalToday: number;
+  completed: number;
+  overdue: number;
+  trendVsYesterday: number;
+}
+
+export interface ControlCenterRealInputs {
+  areaChecklistStats?: RealAreaChecklistStat[];
+  calls?: OpenCall[];
+  checklistsSummary?: RealChecklistsSummaryInput;
 }
 
 const FALLBACK_AREAS = ['Governança', 'Manutenção', 'Recepção', 'Alimentos e Bebidas', 'Lazer e Spa'];
@@ -181,25 +202,16 @@ const OVERDUE_REASONS = [
   'Reagendado a pedido do hóspede.'
 ];
 
-const CALL_SUBJECTS = [
-  'Barulho excessivo no quarto vizinho',
-  'Solicitação de item de amenities extra',
-  'Problema com Wi-Fi no andar',
-  'Vazamento reportado pelo hóspede',
-  'Solicitação de troca de quarto',
-  'Reclamação sobre temperatura da piscina',
-  'Pedido de manutenção urgente no banheiro',
-  'Solicitação de transporte ao aeroporto'
-];
+function buildAreaMetrics(areas: { id: string; name: string }[], real?: ControlCenterRealInputs): AreaMetrics[] {
+  const calls = real?.calls ?? [];
+  const statsByArea = new Map((real?.areaChecklistStats ?? []).map((s) => [s.areaId, s]));
 
-const COMMENT_AUTHORS = ['Ana Beatriz', 'Diego Ferreira', 'Sofia Martins', 'Bruno Castro'];
-
-function buildAreaMetrics(areaNames: { id: string; name: string }[]): AreaMetrics[] {
-  return areaNames.map(({ id, name }) => {
+  return areas.map(({ id, name }) => {
     const rng = seededRandom(id);
-    const complianceRate = rangeInt(rng, 58, 100);
-    const pendingChecklists = rangeInt(rng, 0, 7);
-    const openCalls = rangeInt(rng, 0, 5);
+    const stat = statsByArea.get(id);
+    const complianceRate = stat ? stat.complianceRate : rangeInt(rng, 58, 100);
+    const pendingChecklists = stat ? stat.pendingChecklists : rangeInt(rng, 0, 7);
+    const openCalls = real?.calls ? calls.filter((c) => c.areaId === id && c.status !== 'Finished').length : rangeInt(rng, 0, 5);
     const overdueServiceOrders = rangeInt(rng, 0, 4);
     const totalServiceOrders = overdueServiceOrders + rangeInt(rng, 2, 9);
 
@@ -241,27 +253,6 @@ function buildServiceOrders(areaNames: string[]): ServiceOrder[] {
   });
 }
 
-function buildOpenCalls(areaNames: string[]): OpenCall[] {
-  const rng = seededRandom('open-calls-seed');
-  return Array.from({ length: 8 }).map((_, i) => {
-    const areaFrom = areaNames[i % areaNames.length];
-    const areaTo = areaNames[(i + 1) % areaNames.length];
-    const hoursOpen = rangeInt(rng, 1, 48);
-    return {
-      id: `call-${i + 1}`,
-      subject: CALL_SUBJECTS[i % CALL_SUBJECTS.length],
-      areaFrom,
-      areaTo,
-      timeOpenLabel: hoursOpen >= 24 ? `${Math.round(hoursOpen / 24)}d` : `${hoursOpen}h`,
-      priority: pick(rng, ['Alta', 'Media', 'Baixa'] as const),
-      comments: [
-        { author: pick(rng, COMMENT_AUTHORS), timeLabel: `há ${hoursOpen}h`, text: 'Chamado registrado e encaminhado para a área responsável.' },
-        { author: pick(rng, COMMENT_AUTHORS), timeLabel: `há ${Math.max(1, hoursOpen - 3)}h`, text: 'Equipe a caminho para verificar a solicitação.' }
-      ]
-    };
-  });
-}
-
 function buildActivity(areaNames: string[], serviceOrders: ServiceOrder[], openCalls: OpenCall[]): ActivityEvent[] {
   const rng = seededRandom('activity-seed');
   const templates: { type: ActivityEventType; title: (i: number) => string; kind: ActivityEvent['relatedKind'] }[] = [
@@ -269,15 +260,19 @@ function buildActivity(areaNames: string[], serviceOrders: ServiceOrder[], openC
     { type: 'checklist_reviewed', title: () => 'Checklist revisado pela supervisão', kind: 'checklist' },
     { type: 'service_order_started', title: (i) => `Ordem de serviço iniciada: ${serviceOrders[i % serviceOrders.length]?.description ?? 'Manutenção'}`, kind: 'serviceOrder' },
     { type: 'service_order_finished', title: (i) => `Ordem de serviço concluída: ${serviceOrders[i % serviceOrders.length]?.description ?? 'Manutenção'}`, kind: 'serviceOrder' },
-    { type: 'call_opened', title: (i) => `Chamado aberto: ${openCalls[i % openCalls.length]?.subject ?? 'Solicitação'}`, kind: 'call' },
-    { type: 'call_closed', title: (i) => `Chamado encerrado: ${openCalls[i % openCalls.length]?.subject ?? 'Solicitação'}`, kind: 'call' }
+    { type: 'call_opened', title: (i) => `Chamado aberto: ${openCalls[i % Math.max(1, openCalls.length)]?.subject ?? 'Solicitação'}`, kind: 'call' },
+    { type: 'call_closed', title: (i) => `Chamado encerrado: ${openCalls[i % Math.max(1, openCalls.length)]?.subject ?? 'Solicitação'}`, kind: 'call' }
   ];
 
   return Array.from({ length: 12 }).map((_, i) => {
     const tpl = templates[i % templates.length];
     const minutesAgo = (i + 1) * rangeInt(rng, 6, 18);
     const relatedId =
-      tpl.kind === 'serviceOrder' ? serviceOrders[i % serviceOrders.length]?.id : tpl.kind === 'call' ? openCalls[i % openCalls.length]?.id : undefined;
+      tpl.kind === 'serviceOrder'
+        ? serviceOrders[i % serviceOrders.length]?.id
+        : tpl.kind === 'call' && openCalls.length > 0
+          ? openCalls[i % openCalls.length]?.id
+          : undefined;
     return {
       id: `activity-${i + 1}`,
       type: tpl.type,
@@ -290,23 +285,44 @@ function buildActivity(areaNames: string[], serviceOrders: ServiceOrder[], openC
   });
 }
 
-export function buildControlCenterData(realAreas: { id: string; name: string }[]): ControlCenterData {
+export function buildControlCenterData(realAreas: { id: string; name: string }[], real?: ControlCenterRealInputs): ControlCenterData {
   const areas = realAreas.length > 0 ? realAreas : FALLBACK_AREAS.map((name, i) => ({ id: `mock-area-${i}`, name }));
   const areaNames = areas.map((a) => a.name);
 
-  const areaMetrics = buildAreaMetrics(areas);
+  const areaMetrics = buildAreaMetrics(areas, real);
   const serviceOrders = buildServiceOrders(areaNames);
   const overdueServiceOrders = [...serviceOrders].sort((a, b) => b.daysOverdue - a.daysOverdue);
-  const openCalls = buildOpenCalls(areaNames);
+  const calls = real?.calls ?? [];
+  const openCalls = calls.filter((c) => c.status !== 'Finished');
   const activity = buildActivity(areaNames, serviceOrders, openCalls);
 
-  const totalChecklistsToday = areaMetrics.reduce((sum, a) => sum + a.pendingChecklists + rangeInt(seededRandom(a.areaId + '-done'), 3, 9), 0);
-  const completedChecklists = Math.max(0, totalChecklistsToday - areaMetrics.reduce((sum, a) => sum + a.pendingChecklists, 0));
-  const completionRate = totalChecklistsToday === 0 ? 0 : Math.round((completedChecklists * 100) / totalChecklistsToday);
+  const checklistsInput: RealChecklistsSummaryInput = real?.checklistsSummary ?? {
+    totalToday: areaMetrics.reduce((sum, a) => sum + a.pendingChecklists + rangeInt(seededRandom(a.areaId + '-done'), 3, 9), 0),
+    completed: 0,
+    overdue: areaMetrics.reduce((sum, a) => sum + (a.pendingChecklists > 3 ? 1 : 0), 0),
+    trendVsYesterday: rangeInt(seededRandom('trend'), -6, 9)
+  };
+  if (!real?.checklistsSummary) {
+    checklistsInput.completed = Math.max(0, checklistsInput.totalToday - areaMetrics.reduce((sum, a) => sum + a.pendingChecklists, 0));
+  }
+  const completionRate = checklistsInput.totalToday === 0 ? 0 : Math.round((checklistsInput.completed * 100) / checklistsInput.totalToday);
 
   const sectorsNormal = areaMetrics.filter((a) => a.status === 'Normal').length;
   const sectorsAtencao = areaMetrics.filter((a) => a.status === 'Atencao').length;
   const sectorsCritico = areaMetrics.filter((a) => a.status === 'Critico').length;
+
+  const highPriorityOpenCalls = calls.filter((c) => c.priority === 'Alta' && c.status !== 'Finished').length;
+  const closedThisWeek = calls.filter((c) => {
+    if (c.status !== 'Finished' || !c.completedAt) return false;
+    const days = (Date.now() - new Date(c.completedAt).getTime()) / 86400000;
+    return days <= 7;
+  }).length;
+  const responseTimesMinutes = calls
+    .filter((c) => c.startedAt)
+    .map((c) => (new Date(c.startedAt as string).getTime() - new Date(c.createdAtUtc).getTime()) / 60000)
+    .filter((v) => v >= 0);
+  const avgResponseMinutes =
+    responseTimesMinutes.length > 0 ? Math.round(responseTimesMinutes.reduce((a, b) => a + b, 0) / responseTimesMinutes.length) : 0;
 
   return {
     areaMetrics,
@@ -315,11 +331,11 @@ export function buildControlCenterData(realAreas: { id: string; name: string }[]
     openCalls,
     activity,
     checklistsSummary: {
-      totalToday: totalChecklistsToday,
-      completed: completedChecklists,
+      totalToday: checklistsInput.totalToday,
+      completed: checklistsInput.completed,
       completionRate,
-      overdue: areaMetrics.reduce((sum, a) => sum + (a.pendingChecklists > 3 ? 1 : 0), 0),
-      trendVsYesterday: rangeInt(seededRandom('trend'), -6, 9)
+      overdue: checklistsInput.overdue,
+      trendVsYesterday: checklistsInput.trendVsYesterday
     },
     serviceOrdersSummary: {
       open: serviceOrders.length,
@@ -329,11 +345,11 @@ export function buildControlCenterData(realAreas: { id: string; name: string }[]
       avgResolutionHours: rangeInt(seededRandom('so-avg'), 6, 30)
     },
     callsSummary: {
-      open: openCalls.length,
-      inProgress: rangeInt(seededRandom('calls-inprogress'), 1, 5),
-      highPriority: openCalls.filter((c) => c.priority === 'Alta').length,
-      avgResponseMinutes: rangeInt(seededRandom('calls-avg'), 8, 45),
-      closedThisWeek: rangeInt(seededRandom('calls-closed'), 10, 30)
+      open: calls.filter((c) => c.status === 'Open').length,
+      inProgress: calls.filter((c) => c.status === 'InProgress').length,
+      highPriority: highPriorityOpenCalls,
+      avgResponseMinutes,
+      closedThisWeek
     },
     operationSummary: {
       healthScore: Math.round(areaMetrics.reduce((sum, a) => sum + a.complianceRate, 0) / Math.max(1, areaMetrics.length)),

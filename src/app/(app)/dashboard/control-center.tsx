@@ -3,8 +3,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/features/auth/store';
 import { useAreas } from '@/features/areas/hooks';
+import { useDashboardReport, useByAreaReport } from '@/features/reports/hooks';
+import { useCalls } from '@/features/calls/hooks';
 import { roleLabel } from '@/components/ui/status-badge';
-import { todayIso } from '@/lib/format';
+import { todayIso, daysAgoIso, formatDateTime } from '@/lib/format';
+import { CallDetailModal, statusLabel as CALL_STATUS_LABEL, statusClass as CALL_STATUS_CLASS } from '../calls/shared';
 import {
   buildControlCenterData,
   SECTOR_STATUS_LABEL,
@@ -14,7 +17,8 @@ import {
   type OpenCall,
   type ActivityEvent,
   type SectorStatus,
-  type MockPriority
+  type MockPriority,
+  type RealAreaChecklistStat
 } from '@/features/control-center/mock';
 
 type KpiKind = 'checklists' | 'serviceOrders' | 'calls' | 'operation';
@@ -178,8 +182,8 @@ function KpiDetailModal({ kind, data, onClose }: { kind: KpiKind; data: ReturnTy
           </div>
         </div>
         <p className="muted" style={{ fontSize: 12, marginTop: 16 }}>
-          Distribuição por área disponível na seção "Desempenho por áreas". Dados de demonstração — serão substituídos
-          pelo relatório real de checklists por data/área.
+          Distribuição por área disponível na seção "Desempenho por áreas". Dados reais do relatório de checklists de
+          hoje.
         </p>
       </ModalShell>
     );
@@ -427,52 +431,6 @@ function ServiceOrderDetailModal({ order, onClose }: { order: ServiceOrder; onCl
   );
 }
 
-function CallMockDetailModal({ call, onClose }: { call: OpenCall; onClose: () => void }) {
-  const [comments, setComments] = useState(call.comments);
-  const [text, setText] = useState('');
-
-  function addComment() {
-    if (!text.trim()) return;
-    setComments((prev) => [...prev, { author: 'Você', timeLabel: 'agora', text: text.trim() }]);
-    setText('');
-  }
-
-  return (
-    <ModalShell title={call.subject} subtitle={`${call.areaFrom} → ${call.areaTo}`} onClose={onClose}>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        <span className="status overdue">{call.priority}</span>
-        <span className="status progress">Aberto há {call.timeOpenLabel}</span>
-      </div>
-      <div className="timeline">
-        {comments.map((c, i) => (
-          <div className="timeline-item comment" key={i}>
-            <span className="timeline-dot" />
-            <div className="timeline-text">&quot;{c.text}&quot;</div>
-            <div className="timeline-meta">
-              <b>{c.author}</b>
-              <span>·</span>
-              <span>{c.timeLabel}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ marginTop: 14 }}>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Adicionar um comentário (demonstração local)…"
-          rows={2}
-          style={{ width: '100%', resize: 'vertical' }}
-        />
-        <div className="form-actions">
-          <button type="button" className="btn btn-primary" onClick={addComment} disabled={!text.trim()}>
-            Comentar
-          </button>
-        </div>
-      </div>
-    </ModalShell>
-  );
-}
 
 function ActivityDetailModal({ event, onClose }: { event: ActivityEvent; onClose: () => void }) {
   return (
@@ -561,14 +519,16 @@ function AllServiceOrdersModal({
 
 function AllCallsModal({ calls, onSelect, onClose }: { calls: OpenCall[]; onSelect: (c: OpenCall) => void; onClose: () => void }) {
   return (
-    <ModalShell title="Chamados em aberto" subtitle={`${calls.length} chamados`} onClose={onClose} maxWidth={740}>
+    <ModalShell title="Chamados em aberto" subtitle={`${calls.length} chamados`} onClose={onClose} maxWidth={780}>
       <div className="table-wrap">
         <table className="table">
           <thead>
             <tr>
               <th>Descrição</th>
-              <th>Tempo aberto</th>
+              <th>Responsável</th>
+              <th>Status</th>
               <th>Prioridade</th>
+              <th>Aberto em</th>
             </tr>
           </thead>
           <tbody>
@@ -576,13 +536,20 @@ function AllCallsModal({ calls, onSelect, onClose }: { calls: OpenCall[]; onSele
               <tr key={c.id} className="cc-row" onClick={() => onSelect(c)}>
                 <td>
                   <b>{c.subject}</b>
+                  <div className="muted" style={{ fontSize: 11 }}>
+                    {c.areaName}
+                  </div>
                 </td>
-                <td className="muted">{c.timeOpenLabel}</td>
+                <td className="muted">{c.assignedUserName ?? 'Não designado'}</td>
+                <td>
+                  <span className={'status ' + CALL_STATUS_CLASS[c.status]}>{CALL_STATUS_LABEL[c.status]}</span>
+                </td>
                 <td>
                   <span className={'status ' + (c.priority === 'Alta' ? 'overdue' : c.priority === 'Media' ? 'progress' : 'ready')}>
                     {c.priority}
                   </span>
                 </td>
+                <td className="muted">{formatDateTime(c.createdAtUtc)}</td>
               </tr>
             ))}
           </tbody>
@@ -634,14 +601,43 @@ export function ControlCenter() {
   const [openKpi, setOpenKpi] = useState<KpiKind | null>(null);
   const [openArea, setOpenArea] = useState<AreaMetrics | null>(null);
   const [openServiceOrder, setOpenServiceOrder] = useState<ServiceOrder | null>(null);
-  const [openCall, setOpenCall] = useState<OpenCall | null>(null);
+  const [openCallId, setOpenCallId] = useState<string | null>(null);
   const [openActivity, setOpenActivity] = useState<ActivityEvent | null>(null);
   const [showAllAreas, setShowAllAreas] = useState(false);
   const [showAllServiceOrders, setShowAllServiceOrders] = useState(false);
   const [showAllCalls, setShowAllCalls] = useState(false);
   const [showActivityHistory, setShowActivityHistory] = useState(false);
 
-  const data = useMemo(() => buildControlCenterData(areasQuery.data ?? []), [areasQuery.data]);
+  const today = todayIso();
+  const dashboardReportQuery = useDashboardReport({ today });
+  const byAreaReportQuery = useByAreaReport({ fromDate: daysAgoIso(6), toDate: today });
+  const callsQuery = useCalls({});
+
+  const areaChecklistStats: RealAreaChecklistStat[] = useMemo(
+    () =>
+      (byAreaReportQuery.data ?? []).map((a) => ({
+        areaId: a.areaId,
+        complianceRate: a.tasksTotal > 0 ? Math.round(((a.tasksCompleted + a.tasksReviewed) * 100) / a.tasksTotal) : 100,
+        pendingChecklists: a.tasksPending
+      })),
+    [byAreaReportQuery.data]
+  );
+
+  const data = useMemo(() => {
+    const report = dashboardReportQuery.data;
+    return buildControlCenterData(areasQuery.data ?? [], {
+      areaChecklistStats,
+      calls: callsQuery.data ?? [],
+      checklistsSummary: report
+        ? {
+            totalToday: report.tasksTotal,
+            completed: report.tasksCompleted + report.tasksReviewed,
+            overdue: (byAreaReportQuery.data ?? []).filter((a) => a.tasksPending > 3).length,
+            trendVsYesterday: 0
+          }
+        : undefined
+    });
+  }, [areasQuery.data, dashboardReportQuery.data, byAreaReportQuery.data, callsQuery.data, areaChecklistStats]);
 
   const priorityWeight: Record<MockPriority, number> = { Alta: 3, Media: 2, Baixa: 1 };
   const sortedCalls = useMemo(
@@ -667,7 +663,7 @@ export function ControlCenter() {
       if (so) return setOpenServiceOrder(so);
     } else if (ev.relatedKind === 'call') {
       const c = data.openCalls.find((c) => c.id === ev.relatedId);
-      if (c) return setOpenCall(c);
+      if (c) return setOpenCallId(c.id);
     }
     setOpenActivity(ev);
   }
@@ -948,17 +944,22 @@ export function ControlCenter() {
               <thead>
                 <tr>
                   <th>Descrição</th>
-                  <th>Tempo aberto</th>
+                  <th>Status</th>
                   <th>Prioridade</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleCalls.map((c) => (
-                  <tr key={c.id} className="cc-row" onClick={() => setOpenCall(c)}>
+                  <tr key={c.id} className="cc-row" onClick={() => setOpenCallId(c.id)}>
                     <td>
                       <b>{c.subject}</b>
+                      <div className="muted" style={{ fontSize: 11 }}>
+                        {c.areaName}
+                      </div>
                     </td>
-                    <td className="muted">{c.timeOpenLabel}</td>
+                    <td>
+                      <span className={'status ' + CALL_STATUS_CLASS[c.status]}>{CALL_STATUS_LABEL[c.status]}</span>
+                    </td>
                     <td>
                       <span className={'status ' + (c.priority === 'Alta' ? 'overdue' : c.priority === 'Media' ? 'progress' : 'ready')}>
                         {c.priority}
@@ -1008,7 +1009,7 @@ export function ControlCenter() {
       {openKpi && <KpiDetailModal kind={openKpi} data={data} onClose={() => setOpenKpi(null)} />}
       {openArea && <AreaDetailModal area={openArea} onClose={() => setOpenArea(null)} />}
       {openServiceOrder && <ServiceOrderDetailModal order={openServiceOrder} onClose={() => setOpenServiceOrder(null)} />}
-      {openCall && <CallMockDetailModal call={openCall} onClose={() => setOpenCall(null)} />}
+      {openCallId && <CallDetailModal id={openCallId} onClose={() => setOpenCallId(null)} />}
       {openActivity && <ActivityDetailModal event={openActivity} onClose={() => setOpenActivity(null)} />}
       {showAllAreas && (
         <AllAreasModal
@@ -1035,7 +1036,7 @@ export function ControlCenter() {
           calls={sortedCalls}
           onSelect={(c) => {
             setShowAllCalls(false);
-            setOpenCall(c);
+            setOpenCallId(c.id);
           }}
           onClose={() => setShowAllCalls(false)}
         />
