@@ -200,15 +200,9 @@ a.nav{text-decoration:none}
 .timeline-file{margin-top:8px}
 
 /* Centro de Controle Operacional (Diretoria) */
-.cc-header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;background:linear-gradient(135deg,#0f1830 0%,#1b2a52 55%,#233a72 100%);color:#fff;border-radius:14px;padding:24px 28px;margin-bottom:24px;box-shadow:0 12px 30px rgba(15,23,42,.18)}
-.cc-header-eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9fb0e8;margin-bottom:4px}
-.cc-header-title{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0;color:#fff}
-.cc-header-controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.cc-header-controls input[type="date"]{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;border-radius:7px;padding:8px 10px;font-size:13px;color-scheme:dark}
-.cc-header-user{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:6px 12px 6px 6px;color:#fff}
-.cc-header-user .avatar{background:#5e87ff;color:#fff}
-.cc-refresh-btn{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#dbe3ff;border-radius:20px;padding:7px 13px;font-size:11.5px;font-weight:600;cursor:pointer}
-.cc-refresh-btn:hover{background:rgba(255,255,255,.18)}
+.cc-header-plain{margin-bottom:24px}
+.cc-header-title-plain{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0;color:var(--ink)}
+.cc-header-sub-plain{font-size:13px;color:var(--muted);margin:6px 0 0}
 
 .cc-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
 .cc-kpi-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s,transform .15s}

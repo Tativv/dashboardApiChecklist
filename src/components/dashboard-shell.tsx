@@ -115,7 +115,7 @@ function DiretoriaNav({ pathname }: { pathname: string }) {
 }
 
 const DIRETORIA_CRUMB_OVERRIDES: Record<string, string> = {
-  '/dashboard': 'Centro de Controle Operacional',
+  '/dashboard': 'Dashboard',
   '/checklists': 'Checklist',
   '/service-orders': 'Ordens de Serviço',
   '/calls': 'Chamados',
