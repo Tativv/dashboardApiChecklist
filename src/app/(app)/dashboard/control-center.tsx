@@ -7,7 +7,7 @@ import { useDashboardReport, useByAreaReport } from '@/features/reports/hooks';
 import { useCalls } from '@/features/calls/hooks';
 import { useInstances, useInstance } from '@/features/checklist-instances/hooks';
 import { useUsers } from '@/features/users/hooks';
-import { todayIso, daysAgoIso, formatDate, formatDateTime } from '@/lib/format';
+import { todayIso, formatDate, formatDateTime } from '@/lib/format';
 import { CallDetailModal, statusLabel as CALL_STATUS_LABEL, statusClass as CALL_STATUS_CLASS } from '../calls/shared';
 import type { ChecklistTaskExecutionDto } from '@/types/api';
 import {
@@ -38,6 +38,7 @@ const ICONS = {
   wrench: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
   phone: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z',
   gauge: 'M12 2v4M4.93 4.93l2.83 2.83M2 12h4M2.85 15.5l3.68-1.36M12 8a5 5 0 1 0 4.9 6H16a4 4 0 1 0-4-4z',
+  refresh: 'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15',
   chevron: 'M9 18l6-6-6-6',
   clock: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 5v5l4 2',
   close: 'M18 6L6 18M6 6l12 12',
@@ -76,6 +77,12 @@ function areaIcon(name: string): { path: string; bg: string; color: string } {
     .toLowerCase();
   const rule = AREA_ICON_RULES.find((r) => r.keywords.some((k) => normalized.includes(k)));
   return rule ?? { path: ICONS.area, bg: '#eef1f6', color: '#475467' };
+}
+
+function shiftDateIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function activityIconAndColor(type: ActivityEvent['type']): { path: string; color: string } {
@@ -649,8 +656,8 @@ function ActivityHistoryModal({
 
 export function ControlCenter() {
   const areasQuery = useAreas();
-  const date = todayIso();
-  const [lastUpdated] = useState(() => new Date());
+  const [date, setDate] = useState(todayIso());
+  const [lastUpdated, setLastUpdated] = useState(() => new Date());
   const [openKpi, setOpenKpi] = useState<KpiKind | null>(null);
   const [openArea, setOpenArea] = useState<AreaMetrics | null>(null);
   const [openServiceOrder, setOpenServiceOrder] = useState<ServiceOrder | null>(null);
@@ -659,10 +666,19 @@ export function ControlCenter() {
   const [showAllAreas, setShowAllAreas] = useState(false);
   const [showActivityHistory, setShowActivityHistory] = useState(false);
 
-  const today = todayIso();
-  const dashboardReportQuery = useDashboardReport({ today });
-  const byAreaReportQuery = useByAreaReport({ fromDate: daysAgoIso(6), toDate: today });
+  const dashboardReportQuery = useDashboardReport({ today: date });
+  const byAreaReportQuery = useByAreaReport({ fromDate: shiftDateIso(date, -6), toDate: date });
   const callsQuery = useCalls({});
+
+  const dayLabel = date === todayIso() ? 'hoje' : formatDate(date);
+
+  function onRefresh() {
+    areasQuery.refetch();
+    dashboardReportQuery.refetch();
+    byAreaReportQuery.refetch();
+    callsQuery.refetch();
+    setLastUpdated(new Date());
+  }
 
   const areaChecklistStats: RealAreaChecklistStat[] = useMemo(
     () =>
@@ -729,11 +745,23 @@ export function ControlCenter() {
     <div className="page cc-page">
       <div className="cc-header-plain">
         <h1 className="cc-header-title-plain">Centro de Controle Operacional</h1>
-        <p className="cc-header-sub-plain">
-          Data selecionada: {formatDate(date)} · Atualizado em{' '}
-          {lastUpdated.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-        </p>
       </div>
+
+      <section className="card cc-toolbar-card">
+        <div className="cc-toolbar-card-inner">
+          <button type="button" className="cc-refresh-inline" onClick={onRefresh} title="Atualizar">
+            <Icon path={ICONS.refresh} size={15} />
+            <span>
+              Atualizado em{' '}
+              {lastUpdated.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </button>
+          <div className="cc-date-field">
+            <label htmlFor="cc-date-input">Ver dados de</label>
+            <input id="cc-date-input" type="date" value={date} max={todayIso()} onChange={(e) => setDate(e.target.value)} />
+          </div>
+        </div>
+      </section>
 
       <div className="cc-kpi-grid">
         <button type="button" className="cc-kpi-card" onClick={() => setOpenKpi('checklists')}>
@@ -761,7 +789,7 @@ export function ControlCenter() {
             </div>
           </div>
           <ProgressBar percent={data.checklistsSummary.completionRate} color="#3766f5" />
-          <div className="cc-kpi-total">Total: {data.checklistsSummary.totalToday} para hoje</div>
+          <div className="cc-kpi-total">Total: {data.checklistsSummary.totalToday} para {dayLabel}</div>
         </button>
 
         <button type="button" className="cc-kpi-card" onClick={() => setOpenKpi('serviceOrders')}>

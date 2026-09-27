@@ -200,9 +200,17 @@ a.nav{text-decoration:none}
 .timeline-file{margin-top:8px}
 
 /* Centro de Controle Operacional (Diretoria) */
-.cc-header-plain{margin-bottom:24px}
+.cc-header-plain{margin-bottom:16px}
 .cc-header-title-plain{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0;color:var(--ink)}
-.cc-header-sub-plain{font-size:13px;color:var(--muted);margin:6px 0 0}
+
+.cc-toolbar-card{padding:14px 20px;margin-bottom:24px}
+.cc-toolbar-card-inner{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.cc-refresh-inline{display:flex;align-items:center;gap:8px;border:0;background:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0}
+.cc-refresh-inline:hover{color:var(--ink)}
+.cc-refresh-inline svg{color:var(--blue);flex-shrink:0}
+.cc-date-field{display:flex;align-items:center;gap:10px}
+.cc-date-field label{font-size:12.5px;color:var(--muted);font-weight:600}
+.cc-date-field input[type="date"]{border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13px;background:#fff}
 
 .cc-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
 .cc-kpi-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s,transform .15s}
