@@ -43,6 +43,11 @@ function saveLinks(links: Record<string, ServiceOrderLink>) {
   }
 }
 
+function toLocalDateIso(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function elapsedShort(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60000);
@@ -403,7 +408,9 @@ export function DiretoriaCalls() {
   const abertos = list.filter((c) => c.status === 'Open').length;
   const emAndamento = list.filter((c) => c.status === 'InProgress').length;
   const today = todayIso();
-  const finalizadosHoje = list.filter((c) => c.status === 'Finished' && c.completedAt?.slice(0, 10) === today).length;
+  const finalizadosHoje = list.filter(
+    (c) => c.status === 'Finished' && !!c.completedAt && toLocalDateIso(c.completedAt) === today
+  ).length;
   const criticos = list.filter((c) => c.priority === 'Alta' && c.status !== 'Finished').length;
 
   function matchesQuickFilter(c: CallListItemDto, filter: QuickFilter): boolean {

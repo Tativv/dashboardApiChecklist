@@ -106,6 +106,11 @@ function firstDayOfMonthIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
+function toLocalDateIso(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function DiretoriaReports() {
   const areasQuery = useAreas();
   const [reportType, setReportType] = useState<ReportTypeKey | null>(null);
@@ -146,7 +151,7 @@ export function DiretoriaReports() {
       } else if (reportType === 'chamados') {
         const calls = await listCalls({});
         const filtered = calls.filter((c) => {
-          const day = c.createdAtUtc.slice(0, 10);
+          const day = toLocalDateIso(c.createdAtUtc);
           return day >= fromDate && day <= toDate;
         });
         pdf = buildCallsReportPdf(filtered, fromDate, toDate);
