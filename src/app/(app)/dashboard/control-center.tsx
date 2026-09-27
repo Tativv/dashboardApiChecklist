@@ -477,46 +477,6 @@ function AllAreasModal({ areas, onSelect, onClose }: { areas: AreaMetrics[]; onS
   );
 }
 
-function AllServiceOrdersModal({
-  orders,
-  onSelect,
-  onClose
-}: {
-  orders: ServiceOrder[];
-  onSelect: (o: ServiceOrder) => void;
-  onClose: () => void;
-}) {
-  return (
-    <ModalShell title="Ordens de Serviço atrasadas" subtitle={`${orders.length} ordens`} onClose={onClose} maxWidth={740}>
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Descrição</th>
-              <th>Ativo</th>
-              <th>Dias em atraso</th>
-              <th>Responsável</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((o) => (
-              <tr key={o.id} className="cc-row" onClick={() => onSelect(o)}>
-                <td>
-                  <b>{o.description}</b>
-                </td>
-                <td className="muted">{o.assetName}</td>
-                <td>
-                  <span className="status overdue">{o.daysOverdue}d</span>
-                </td>
-                <td className="muted">{o.responsibleName}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </ModalShell>
-  );
-}
 
 function ActivityHistoryModal({
   events,
@@ -563,7 +523,6 @@ export function ControlCenter() {
   const [openCallId, setOpenCallId] = useState<string | null>(null);
   const [openActivity, setOpenActivity] = useState<ActivityEvent | null>(null);
   const [showAllAreas, setShowAllAreas] = useState(false);
-  const [showAllServiceOrders, setShowAllServiceOrders] = useState(false);
   const [showActivityHistory, setShowActivityHistory] = useState(false);
 
   const today = todayIso();
@@ -847,15 +806,10 @@ export function ControlCenter() {
       <div className="cc-bottom-grid-3" style={{ marginTop: 20 }}>
         <section className="card cc-bottom-card">
           <div className="cc-card-header-row">
-            <div>
-              <h2 className="card-title">Ordens de Serviço atrasadas</h2>
-              <p className="card-sub">Top 5 mais críticas</p>
-            </div>
-            {data.overdueServiceOrders.length > 5 && (
-              <button type="button" className="cc-link-btn" onClick={() => setShowAllServiceOrders(true)}>
-                Ver Todas
-              </button>
-            )}
+            <h2 className="card-title">Ordens de Serviço</h2>
+            <Link href="/service-orders" className="cc-link-btn">
+              Ver Todas
+            </Link>
           </div>
           <div className="table-wrap cc-bottom-card-body">
             <table className="table">
@@ -887,10 +841,7 @@ export function ControlCenter() {
 
         <section className="card cc-bottom-card">
           <div className="cc-card-header-row">
-            <div>
-              <h2 className="card-title">Chamados em aberto</h2>
-              <p className="card-sub">Top 5 mais relevantes</p>
-            </div>
+            <h2 className="card-title">Chamados em aberto</h2>
             <Link href="/calls" className="cc-link-btn">
               Ver todos
             </Link>
@@ -975,16 +926,6 @@ export function ControlCenter() {
             setOpenArea(a);
           }}
           onClose={() => setShowAllAreas(false)}
-        />
-      )}
-      {showAllServiceOrders && (
-        <AllServiceOrdersModal
-          orders={data.overdueServiceOrders}
-          onSelect={(o) => {
-            setShowAllServiceOrders(false);
-            setOpenServiceOrder(o);
-          }}
-          onClose={() => setShowAllServiceOrders(false)}
         />
       )}
       {showActivityHistory && (
