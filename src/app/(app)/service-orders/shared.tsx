@@ -36,11 +36,10 @@ const DEFAULT_PRIORITY: ServiceOrderPriority = 'Media';
 
 export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
   const areas = useAreas();
-  const areaNameById = new Map((areas.data ?? []).map((a) => [a.id, a.name]));
   const createServiceOrder = useCreateServiceOrder();
+  const [areaId, setAreaId] = useState('');
   const [assetId, setAssetId] = useState('');
-  const assetsQuery = useAssets({ active: true });
-  const selectedAsset = (assetsQuery.data ?? []).find((a) => a.id === assetId);
+  const assetsQuery = useAssets({ areaId: areaId || undefined, active: true });
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [dueAtUtc, setDueAtUtc] = useState('');
@@ -49,12 +48,13 @@ export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!selectedAsset) return setError('Selecione o ativo.');
+    if (!areaId) return setError('Selecione o setor.');
+    if (!assetId) return setError('Selecione o ativo.');
     if (!dueAtUtc) return setError('Selecione a data de vencimento.');
     try {
       await createServiceOrder.mutateAsync({
-        areaId: selectedAsset.areaId,
-        assetId: selectedAsset.id,
+        areaId,
+        assetId,
         subject,
         description: description || null,
         priority: DEFAULT_PRIORITY,
@@ -74,7 +74,7 @@ export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
             <div style={{ minWidth: 0 }}>
               <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Nova ordem de serviço</h2>
               <p className="muted" style={{ margin: '4px 0 0', fontSize: 12.5 }}>
-                Defina o ativo, o vencimento e o assunto
+                Defina o setor, o ativo, o vencimento e o nome
               </p>
             </div>
             <button type="button" className="modal-close" onClick={onClose} title="Fechar">
@@ -88,26 +88,32 @@ export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
           <form id="create-service-order-form" onSubmit={onSubmit}>
             <div style={{ display: 'grid', gap: 14 }}>
               <div className="field">
+                <label>Setor</label>
+                <SearchableSelect
+                  value={areaId}
+                  onChange={(v) => {
+                    setAreaId(v);
+                    setAssetId('');
+                  }}
+                  placeholder="Selecione o setor"
+                  options={(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+                />
+              </div>
+              <div className="field">
                 <label>Ativo</label>
                 <SearchableSelect
                   value={assetId}
                   onChange={setAssetId}
-                  placeholder="Selecione o ativo"
+                  placeholder={areaId ? 'Selecione o ativo' : 'Selecione o setor primeiro'}
                   options={(assetsQuery.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
                 />
-              </div>
-              <div className="field">
-                <label>Setor</label>
-                <div style={{ fontSize: 13.5, padding: '10px 0', color: selectedAsset ? 'var(--ink)' : 'var(--muted)' }}>
-                  {selectedAsset ? (areaNameById.get(selectedAsset.areaId) ?? '—') : 'Selecione o ativo para ver o setor'}
-                </div>
               </div>
               <div className="field">
                 <label>Vencimento</label>
                 <input type="date" value={dueAtUtc} onChange={(e) => setDueAtUtc(e.target.value)} required />
               </div>
               <div className="field">
-                <label>Assunto</label>
+                <label>Nome da Ordem de Serviço</label>
                 <input value={subject} onChange={(e) => setSubject(e.target.value)} required maxLength={200} />
               </div>
               <div className="field">
