@@ -24,7 +24,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <span className="kpi-label">E-mail</span>
-            <div>{user?.email}</div>
+            <div>{user?.email || '—'}</div>
           </div>
           <div>
             <span className="kpi-label">Perfil de acesso</span>

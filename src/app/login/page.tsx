@@ -10,50 +10,58 @@ import { toApiError } from '@/lib/api-error';
 import { ErrorBanner } from '@/components/ui/error-banner';
 
 const schema = z.object({
-  email: z.string().min(1, 'O e-mail é obrigatório').email('E-mail inválido'),
+  name: z.string().min(1, 'O nome de usuário é obrigatório'),
   password: z.string().min(1, 'A senha é obrigatória')
 });
 type FormValues = z.infer<typeof schema>;
 
 interface DemoAccount {
   role: string;
-  email: string;
+  name: string;
   password: string;
   description: string;
   icon: string;
 }
 
 // Credenciais espelham exatamente o DbSeeder do backend (Common/Persistence/Seed/DbSeeder.cs).
+// O login é feito por Name, não por e-mail — nem todo colaborador do hotel tem e-mail próprio.
 // Se o login com uma destas contas falhar com "credenciais inválidas", o mais provável é que o
 // seed nunca tenha rodado no banco atual (ele só popula quando a tabela de usuários está vazia).
 const demoAccounts: DemoAccount[] = [
   {
     role: 'Diretoria',
-    email: 'directoria@hotelchecklist.local',
-    password: 'Directoria123!',
+    name: 'Diretoria',
+    password: 'Diretoria123!',
     description: 'Visão executiva e relatórios completos',
     icon: 'M3 21h18M5 21V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v17M15 21V9a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v12M8 6h1M11 6h1M8 10h1M11 10h1M8 14h1M11 14h1'
   },
   {
     role: 'Gerência',
-    email: 'gerencia@hotelchecklist.local',
+    name: 'Gerencia',
     password: 'Gerencia123!',
     description: 'Gestão operacional e aprovações',
     icon: 'M20 7h-3V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H4a1 1 0 0 0-1 1v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1zM9 5h6v2H9z'
   },
   {
     role: 'Supervisor',
-    email: 'supervisor@hotelchecklist.local',
+    name: 'Supervisor',
     password: 'Supervisor123!',
     description: 'Coordenação de equipes e áreas',
     icon: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'
   },
   {
-    role: 'Colaborador',
-    email: 'colaborador@hotelchecklist.local',
-    password: 'Colaborador123!',
-    description: 'Execução das tarefas do dia a dia',
-    icon: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'
+    role: 'Recepção',
+    name: 'Recepcao',
+    password: 'Recepcao123!',
+    description: 'Atendimento e check-in de hóspedes',
+    icon: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0'
+  },
+  {
+    role: 'Manutenção',
+    name: 'Mantinemento',
+    password: 'Mantinemento123!',
+    description: 'Reparos e manutenção das instalações',
+    icon: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'
   }
 ];
 
@@ -75,15 +83,15 @@ export default function LoginPage() {
     handleSubmit,
     setValue,
     formState: { errors, isSubmitting }
-  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } });
+  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { name: '', password: '' } });
 
   useEffect(() => {
     if (isSessionValid()) router.replace('/dashboard');
   }, [router]);
 
-  async function performLogin(email: string, password: string) {
+  async function performLogin(name: string, password: string) {
     setServerError(null);
-    const res = await login(email, password);
+    const res = await login(name, password);
     setSession({
       token: res.token,
       expiresAtUtc: res.expiresAtUtc,
@@ -94,18 +102,18 @@ export default function LoginPage() {
 
   async function onSubmit(values: FormValues) {
     try {
-      await performLogin(values.email, values.password);
+      await performLogin(values.name, values.password);
     } catch (err) {
       setServerError(toApiError(err).message);
     }
   }
 
   async function onDemoClick(acc: DemoAccount) {
-    setValue('email', acc.email, { shouldValidate: true });
+    setValue('name', acc.name, { shouldValidate: true });
     setValue('password', acc.password, { shouldValidate: true });
     setDemoLoading(acc.role);
     try {
-      await performLogin(acc.email, acc.password);
+      await performLogin(acc.name, acc.password);
     } catch (err) {
       setServerError(toApiError(err).message);
     } finally {
@@ -144,11 +152,11 @@ export default function LoginPage() {
             <div className="login-field">
               <div className="login-input-group">
                 <span className="login-input-icon">
-                  <Icon path="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6" />
+                  <Icon path="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
                 </span>
-                <input type="email" autoComplete="email" placeholder="seu@email.com" className="login-input" {...register('email')} />
+                <input type="text" autoComplete="username" placeholder="Nome de usuário" className="login-input" {...register('name')} />
               </div>
-              {errors.email && <small className="field-error">{errors.email.message}</small>}
+              {errors.name && <small className="field-error">{errors.name.message}</small>}
             </div>
             <div className="login-field">
               <div className="login-input-group">

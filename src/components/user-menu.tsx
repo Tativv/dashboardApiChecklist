@@ -74,12 +74,14 @@ function MeuPerfilModal({ user, loginAt, onClose }: { user: AuthUser; loginAt: s
         </div>
       </div>
       <div style={{ display: 'grid', gap: 14 }}>
-        <div>
-          <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.04em' }}>
-            E-mail
+        {user.email && (
+          <div>
+            <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+              E-mail
+            </div>
+            <div style={{ fontSize: 14, marginTop: 2 }}>{user.email}</div>
           </div>
-          <div style={{ fontSize: 14, marginTop: 2 }}>{user.email}</div>
-        </div>
+        )}
         <div>
           <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.04em' }}>
             Áreas vinculadas

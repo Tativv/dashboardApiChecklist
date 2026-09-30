@@ -18,7 +18,7 @@ export async function getUser(id: string): Promise<UserDto> {
 
 export async function createUser(input: {
   name: string;
-  email: string;
+  email?: string | null;
   password: string;
   role: string;
   areaIds: string[];

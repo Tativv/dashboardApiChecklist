@@ -34,7 +34,7 @@ function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void
       if (initial) {
         await updateUser.mutateAsync({ id: initial.id, input: { name, role, areaIds } });
       } else {
-        await createUser.mutateAsync({ name, email, password, role, areaIds });
+        await createUser.mutateAsync({ name, email: email || null, password, role, areaIds });
       }
       onClose();
     } catch (err) {
@@ -53,14 +53,8 @@ function UserForm({ initial, onClose }: { initial?: UserDto; onClose: () => void
             <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={200} />
           </div>
           <div className="field">
-            <label>E-mail</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={!!initial}
-            />
+            <label>E-mail (opcional)</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!!initial} />
           </div>
           {!initial && (
             <div className="field">
@@ -156,7 +150,7 @@ export default function UsersPage() {
               {(users.data ?? []).map((u) => (
                 <tr key={u.id}>
                   <td>{u.name}</td>
-                  <td>{u.email}</td>
+                  <td className={u.email ? undefined : 'muted'}>{u.email || 'Sem e-mail'}</td>
                   <td>{roleLabel(u.role)}</td>
                   <td className="muted">
                     {u.areaIds.length > 0

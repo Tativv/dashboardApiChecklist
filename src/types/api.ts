@@ -22,7 +22,7 @@ export interface ScheduleDto extends ScheduleInput {
 export interface UserDto {
   id: string;
   name: string;
-  email: string;
+  email?: string | null;
   role: UserRole;
   active: boolean;
   areaIds: string[];
@@ -338,6 +338,6 @@ export interface LoginResponse {
   expiresAtUtc: string;
   userId: string;
   name: string;
-  email: string;
+  email?: string | null;
   role: UserRole;
 }

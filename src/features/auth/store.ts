@@ -5,7 +5,7 @@ import { UserRole } from '@/types/api';
 export interface AuthUser {
   id: string;
   name: string;
-  email: string;
+  email?: string | null;
   role: UserRole;
 }
 
