@@ -1,10 +1,9 @@
 'use client';
 import { useState } from 'react';
-import { useAreas } from '@/features/areas/hooks';
 import { getDashboardReport, getByDateReport, getByAreaReport } from '@/features/reports/api';
 import { listCalls } from '@/features/calls/api';
+import { listServiceOrders } from '@/features/service-orders/api';
 import { listUsers } from '@/features/users/api';
-import { buildControlCenterData } from '@/features/control-center/mock';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { PdfPreviewModal } from '@/components/pdf-preview-modal';
 import { toApiError } from '@/lib/api-error';
@@ -112,7 +111,6 @@ function toLocalDateIso(iso: string): string {
 }
 
 export function DiretoriaReports() {
-  const areasQuery = useAreas();
   const [reportType, setReportType] = useState<ReportTypeKey | null>(null);
   const [period, setPeriod] = useState<PeriodKey>('7d');
   const [customFrom, setCustomFrom] = useState(todayIso());
@@ -156,8 +154,12 @@ export function DiretoriaReports() {
         });
         pdf = buildCallsReportPdf(filtered, fromDate, toDate);
       } else if (reportType === 'ordens-servico') {
-        const data = buildControlCenterData(areasQuery.data ?? []);
-        pdf = buildServiceOrdersReportPdf(data.serviceOrders, fromDate, toDate);
+        const orders = await listServiceOrders({});
+        const filtered = orders.filter((o) => {
+          const day = toLocalDateIso(o.dueAtUtc);
+          return day >= fromDate && day <= toDate;
+        });
+        pdf = buildServiceOrdersReportPdf(filtered, fromDate, toDate);
       } else if (reportType === 'produtividade') {
         const users = await listUsers({ active: true });
         pdf = buildProdutividadeReportPdf(users, fromDate, toDate);

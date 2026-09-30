@@ -5,17 +5,18 @@ import { useSearchParams } from 'next/navigation';
 import { useAreas } from '@/features/areas/hooks';
 import { useDashboardReport, useByAreaReport } from '@/features/reports/hooks';
 import { useCalls } from '@/features/calls/hooks';
+import { useServiceOrders } from '@/features/service-orders/hooks';
 import { useInstances, useInstance } from '@/features/checklist-instances/hooks';
 import { useUsers } from '@/features/users/hooks';
 import { todayIso, formatDate, formatDateTime } from '@/lib/format';
 import { CallDetailModal, statusLabel as CALL_STATUS_LABEL, statusClass as CALL_STATUS_CLASS } from '../calls/shared';
+import { ServiceOrderDetailModal, priorityClass as SO_PRIORITY_CLASS, priorityLabel as SO_PRIORITY_LABEL } from '../service-orders/shared';
 import type { ChecklistTaskExecutionDto } from '@/types/api';
 import {
   buildControlCenterData,
   SECTOR_STATUS_LABEL,
   SECTOR_STATUS_COLOR,
   type AreaMetrics,
-  type ServiceOrder,
   type OpenCall,
   type ActivityEvent,
   type SectorStatus,
@@ -83,6 +84,10 @@ function shiftDateIso(iso: string, days: number): string {
   const d = new Date(`${iso}T00:00:00`);
   d.setDate(d.getDate() + days);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function daysOverdue(dueAtUtc: string): number {
+  return Math.max(1, Math.floor((Date.now() - new Date(dueAtUtc).getTime()) / 86400000));
 }
 
 function activityIconAndColor(type: ActivityEvent['type']): { path: string; color: string } {
@@ -220,8 +225,7 @@ function KpiDetailModal({ kind, data, onClose }: { kind: KpiKind; data: ReturnTy
           </div>
         </div>
         <p className="muted" style={{ fontSize: 12, marginTop: 16 }}>
-          Tempo médio de resolução: <b>{s.avgResolutionHours}h</b>. Veja a lista completa na tabela "Ordens de Serviço
-          atrasadas". Módulo ainda não existe no backend — estrutura pronta para integração futura.
+          Tempo médio de resolução: <b>{s.avgResolutionHours}h</b>. Veja a lista completa na tabela "Ordens de Serviço".
         </p>
       </ModalShell>
     );
@@ -434,7 +438,68 @@ function AreaCallsTab({ area, onViewCall }: { area: AreaMetrics; onViewCall: (id
   );
 }
 
-function AreaDetailModal({ area, onClose, onViewCall }: { area: AreaMetrics; onClose: () => void; onViewCall: (id: string) => void }) {
+function AreaServiceOrdersTab({ area, onViewServiceOrder }: { area: AreaMetrics; onViewServiceOrder: (id: string) => void }) {
+  const serviceOrdersQuery = useServiceOrders({ areaId: area.areaId });
+  const orders = (serviceOrdersQuery.data ?? []).filter((o) => o.status !== 'Finished');
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      {serviceOrdersQuery.isLoading && <p className="muted" style={{ fontSize: 13 }}>Carregando…</p>}
+      {!serviceOrdersQuery.isLoading && orders.length === 0 && <div className="card empty">Nenhuma ordem de serviço em aberto nesta área.</div>}
+      {orders.length > 0 && (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Assunto</th>
+                <th>Ativo</th>
+                <th>Status</th>
+                <th>Prioridade</th>
+                <th>Vencimento</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((o) => (
+                <tr key={o.id} className="cc-row" onClick={() => onViewServiceOrder(o.id)}>
+                  <td>
+                    <b>{o.subject}</b>
+                  </td>
+                  <td className="muted">{o.assetName}</td>
+                  <td>
+                    <span className={'status ' + (o.status === 'Open' ? 'pending' : o.status === 'InProgress' ? 'progress' : 'approved')}>
+                      {o.status === 'Open' ? 'Aberta' : o.status === 'InProgress' ? 'Em andamento' : 'Concluída'}
+                    </span>
+                    {o.overdue && (
+                      <span className="status overdue" style={{ marginLeft: 6 }}>
+                        Atrasada
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <span className={'status ' + SO_PRIORITY_CLASS[o.priority]}>{SO_PRIORITY_LABEL[o.priority]}</span>
+                  </td>
+                  <td className="muted">{formatDateTime(o.dueAtUtc)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AreaDetailModal({
+  area,
+  onClose,
+  onViewCall,
+  onViewServiceOrder
+}: {
+  area: AreaMetrics;
+  onClose: () => void;
+  onViewCall: (id: string) => void;
+  onViewServiceOrder: (id: string) => void;
+}) {
   const [tab, setTab] = useState<AreaTab>('Resumo');
 
   return (
@@ -473,14 +538,7 @@ function AreaDetailModal({ area, onClose, onViewCall }: { area: AreaMetrics; onC
 
       {tab === 'Checklists' && <AreaChecklistsTab areaId={area.areaId} />}
 
-      {tab === 'Ordens de Serviço' && (
-        <div style={{ marginTop: 16 }}>
-          <p className="muted" style={{ fontSize: 13 }}>
-            {area.overdueServiceOrders} ordem(ns) de serviço atrasada(s) nesta área.
-          </p>
-          {area.overdueServiceOrders === 0 && <div className="card empty">Nenhuma ordem atrasada nesta área.</div>}
-        </div>
-      )}
+      {tab === 'Ordens de Serviço' && <AreaServiceOrdersTab area={area} onViewServiceOrder={onViewServiceOrder} />}
 
       {tab === 'Chamados' && <AreaCallsTab area={area} onViewCall={onViewCall} />}
 
@@ -505,62 +563,6 @@ function AreaDetailModal({ area, onClose, onViewCall }: { area: AreaMetrics; onC
     </ModalShell>
   );
 }
-
-function ServiceOrderDetailModal({ order, onClose }: { order: ServiceOrder; onClose: () => void }) {
-  return (
-    <ModalShell title={order.description} subtitle={`${order.assetName} · ${order.areaName}`} onClose={onClose}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <div>
-          <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-            Responsável
-          </div>
-          <div style={{ fontSize: 14, marginTop: 2 }}>{order.responsibleName}</div>
-        </div>
-        <div>
-          <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-            Prioridade
-          </div>
-          <div style={{ fontSize: 14, marginTop: 2 }}>{order.priority}</div>
-        </div>
-        <div>
-          <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-            Última execução
-          </div>
-          <div style={{ fontSize: 14, marginTop: 2 }}>{order.lastExecutionLabel}</div>
-        </div>
-        <div>
-          <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-            Próxima execução
-          </div>
-          <div style={{ fontSize: 14, marginTop: 2, color: '#c43c35', fontWeight: 600 }}>{order.nextExecutionLabel}</div>
-        </div>
-      </div>
-      <div style={{ marginTop: 16 }}>
-        <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-          Motivo do atraso
-        </div>
-        <p style={{ fontSize: 14, marginTop: 4 }}>{order.overdueReason}</p>
-      </div>
-      <div style={{ marginTop: 18 }}>
-        <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>
-          Histórico
-        </div>
-        <div className="timeline">
-          {order.history.map((h, i) => (
-            <div className="timeline-item event" key={i}>
-              <span className="timeline-dot" />
-              <div className="timeline-text">{h.event}</div>
-              <div className="timeline-meta">
-                <span>{h.date}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </ModalShell>
-  );
-}
-
 
 function ActivityDetailModal({ event, onClose }: { event: ActivityEvent; onClose: () => void }) {
   return (
@@ -714,7 +716,7 @@ export function ControlCenter() {
   const [lastUpdated, setLastUpdated] = useState(() => new Date());
   const [openKpi, setOpenKpi] = useState<KpiKind | null>(null);
   const [openArea, setOpenArea] = useState<AreaMetrics | null>(null);
-  const [openServiceOrder, setOpenServiceOrder] = useState<ServiceOrder | null>(null);
+  const [openServiceOrderId, setOpenServiceOrderId] = useState<string | null>(null);
   const [openCallId, setOpenCallId] = useState<string | null>(null);
   const [openActivity, setOpenActivity] = useState<ActivityEvent | null>(null);
   const [showAllAreas, setShowAllAreas] = useState(false);
@@ -724,6 +726,7 @@ export function ControlCenter() {
   const dashboardReportQuery = useDashboardReport({ today: date });
   const byAreaReportQuery = useByAreaReport({ fromDate: shiftDateIso(date, -6), toDate: date });
   const callsQuery = useCalls({});
+  const serviceOrdersQuery = useServiceOrders({});
 
   const dayLabel = date === todayIso() ? 'hoje' : formatDate(date);
 
@@ -732,6 +735,7 @@ export function ControlCenter() {
     dashboardReportQuery.refetch();
     byAreaReportQuery.refetch();
     callsQuery.refetch();
+    serviceOrdersQuery.refetch();
     setLastUpdated(new Date());
   }
 
@@ -750,6 +754,7 @@ export function ControlCenter() {
     return buildControlCenterData(areasQuery.data ?? [], {
       areaChecklistStats,
       calls: callsQuery.data ?? [],
+      serviceOrders: serviceOrdersQuery.data ?? [],
       checklistsSummary: report
         ? {
             totalToday: report.tasksTotal,
@@ -759,7 +764,7 @@ export function ControlCenter() {
           }
         : undefined
     });
-  }, [areasQuery.data, dashboardReportQuery.data, byAreaReportQuery.data, callsQuery.data, areaChecklistStats]);
+  }, [areasQuery.data, dashboardReportQuery.data, byAreaReportQuery.data, callsQuery.data, serviceOrdersQuery.data, areaChecklistStats]);
 
   const priorityWeight: Record<MockPriority, number> = { Alta: 3, Media: 2, Baixa: 1 };
   const sortedCalls = useMemo(
@@ -780,10 +785,7 @@ export function ControlCenter() {
   }, [searchParams]);
 
   function onActivityClick(ev: ActivityEvent) {
-    if (ev.relatedKind === 'serviceOrder') {
-      const so = data.serviceOrders.find((s) => s.id === ev.relatedId);
-      if (so) return setOpenServiceOrder(so);
-    } else if (ev.relatedKind === 'call') {
+    if (ev.relatedKind === 'call') {
       const c = data.openCalls.find((c) => c.id === ev.relatedId);
       if (c) return setOpenCallId(c.id);
     }
@@ -1021,25 +1023,36 @@ export function ControlCenter() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Descrição</th>
+                  <th>Assunto</th>
                   <th>Ativo</th>
+                  <th>Prioridade</th>
                   <th>Dias em atraso</th>
                   <th>Responsável</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleServiceOrders.map((o) => (
-                  <tr key={o.id} className="cc-row" onClick={() => setOpenServiceOrder(o)}>
+                  <tr key={o.id} className="cc-row" onClick={() => setOpenServiceOrderId(o.id)}>
                     <td>
-                      <b>{o.description}</b>
+                      <b>{o.subject}</b>
                     </td>
                     <td className="muted">{o.assetName}</td>
                     <td>
-                      <span className="status overdue">{o.daysOverdue}d</span>
+                      <span className={'status ' + SO_PRIORITY_CLASS[o.priority]}>{SO_PRIORITY_LABEL[o.priority]}</span>
                     </td>
-                    <td className="muted">{o.responsibleName}</td>
+                    <td>
+                      <span className="status overdue">{daysOverdue(o.dueAtUtc)}d</span>
+                    </td>
+                    <td className="muted">{o.assignedUserName ?? 'Não designado'}</td>
                   </tr>
                 ))}
+                {visibleServiceOrders.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="muted">
+                      Nenhuma ordem de serviço atrasada.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -1128,9 +1141,13 @@ export function ControlCenter() {
             setOpenArea(null);
             setOpenCallId(id);
           }}
+          onViewServiceOrder={(id) => {
+            setOpenArea(null);
+            setOpenServiceOrderId(id);
+          }}
         />
       )}
-      {openServiceOrder && <ServiceOrderDetailModal order={openServiceOrder} onClose={() => setOpenServiceOrder(null)} />}
+      {openServiceOrderId && <ServiceOrderDetailModal id={openServiceOrderId} onClose={() => setOpenServiceOrderId(null)} />}
       {openCallId && <CallDetailModal id={openCallId} onClose={() => setOpenCallId(null)} />}
       {openActivity && <ActivityDetailModal event={openActivity} onClose={() => setOpenActivity(null)} />}
       {showAllAreas && (

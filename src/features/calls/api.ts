@@ -1,5 +1,5 @@
 import { http } from '@/lib/http';
-import { CallCommentDto, CallDto, CallListItemDto, CallPriority, CallStatus } from '@/types/api';
+import { CallCommentDto, CallDto, CallListItemDto, CallPriority, CallStatus, ConvertCallToServiceOrderResponseDto } from '@/types/api';
 
 export interface CallFilters {
   areaId?: string;
@@ -66,4 +66,17 @@ export async function addCallComment(callId: string, input: { text?: string | nu
 export async function fetchCallCommentFileBlobUrl(commentId: string): Promise<string> {
   const { data } = await http.get(`/calls/comments/${commentId}/file`, { responseType: 'blob' });
   return URL.createObjectURL(data as Blob);
+}
+
+export interface ConvertCallToServiceOrderInput {
+  assetId: string;
+  dueAtUtc: string;
+  priority?: CallPriority | null;
+  subject?: string | null;
+  description?: string | null;
+}
+
+export async function convertCallToServiceOrder(callId: string, input: ConvertCallToServiceOrderInput): Promise<ConvertCallToServiceOrderResponseDto> {
+  const { data } = await http.post<ConvertCallToServiceOrderResponseDto>(`/calls/${callId}/convert-to-service-order`, input);
+  return data;
 }

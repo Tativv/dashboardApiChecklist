@@ -1,47 +1,20 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
-import { useCalls, useCall, useAssignCall, useStartCall, useFinishCall } from '@/features/calls/hooks';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCalls, useCall, useAssignCall, useStartCall, useFinishCall, useConvertCallToServiceOrder } from '@/features/calls/hooks';
+import { useServiceOrders } from '@/features/service-orders/hooks';
 import { useAreas } from '@/features/areas/hooks';
+import { useAssets } from '@/features/assets/hooks';
 import { useUsers } from '@/features/users/hooks';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toApiError } from '@/lib/api-error';
 import { formatDateTime, todayIso } from '@/lib/format';
-import { CallListItemDto, CallPriority, CallStatus } from '@/types/api';
+import { CallListItemDto, CallPriority, CallStatus, ServiceOrderListItemDto } from '@/types/api';
 import { priorityLabel, priorityClass, statusLabel, statusClass, CreateCallForm, CallCommentsModal, CallDetailModal } from './shared';
+import { ServiceOrderDetailModal } from '../service-orders/shared';
 
 const STATUS_BAR_COLOR: Record<CallStatus, string> = { Open: '#64748b', InProgress: '#315bd6', Finished: '#16794e' };
 const CONVERTED_BAR_COLOR = '#7c3aed';
-
-const STORAGE_KEY = 'hotelops-call-service-order-links';
-
-interface ServiceOrderLink {
-  callId: string;
-  serviceOrderId: string;
-  description: string;
-  areaName: string;
-  responsibleName: string;
-  priority: CallPriority;
-  createdAtIso: string;
-}
-
-function loadLinks(): Record<string, ServiceOrderLink> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, ServiceOrderLink>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveLinks(links: Record<string, ServiceOrderLink>) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(links));
-  } catch {
-    // ignora falha de armazenamento local (modo privado, quota, etc.)
-  }
-}
 
 function toLocalDateIso(iso: string): string {
   const d = new Date(iso);
@@ -107,30 +80,34 @@ const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
   { key: 'finished', label: 'Finalizados' }
 ];
 
-function ConvertToServiceOrderModal({
-  call,
-  onClose,
-  onConfirm
-}: {
-  call: CallListItemDto;
-  onClose: () => void;
-  onConfirm: (link: ServiceOrderLink) => void;
-}) {
-  const [description, setDescription] = useState(call.subject);
-  const [responsibleName, setResponsibleName] = useState(call.assignedUserName ?? '');
-  const [priority, setPriority] = useState<CallPriority>(call.priority);
+function ConvertToServiceOrderModal({ call, onClose, onConverted }: { call: CallListItemDto; onClose: () => void; onConverted: () => void }) {
+  const assetsQuery = useAssets({ areaId: call.areaId, active: true });
+  const convert = useConvertCallToServiceOrder();
+  const [assetId, setAssetId] = useState('');
+  const [dueAtUtc, setDueAtUtc] = useState('');
+  const [priority, setPriority] = useState<CallPriority | ''>('');
+  const [subject, setSubject] = useState(call.subject);
+  const [error, setError] = useState<string | null>(null);
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onConfirm({
-      callId: call.id,
-      serviceOrderId: `so-call-${call.id}`,
-      description,
-      areaName: call.areaName,
-      responsibleName: responsibleName || 'Não definido',
-      priority,
-      createdAtIso: new Date().toISOString()
-    });
+    setError(null);
+    if (!assetId) return setError('Selecione o ativo afetado.');
+    if (!dueAtUtc) return setError('Selecione a data de vencimento.');
+    try {
+      await convert.mutateAsync({
+        callId: call.id,
+        input: {
+          assetId,
+          dueAtUtc: new Date(`${dueAtUtc}T23:59:59`).toISOString(),
+          priority: priority || null,
+          subject: subject !== call.subject ? subject : null
+        }
+      });
+      onConverted();
+    } catch (err) {
+      setError(toApiError(err).message);
+    }
   }
 
   return (
@@ -138,101 +115,56 @@ function ConvertToServiceOrderModal({
       <div className="modal-panel" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Converter em Ordem de Serviço</h2>
-          <p>Cria um vínculo entre o chamado e uma ordem de serviço</p>
+          <p>Cria uma ordem de serviço vinculada a este chamado</p>
           <button type="button" className="modal-close" onClick={onClose} title="Fechar">
             ✕
           </button>
         </div>
         <div className="modal-body">
-          <p className="muted" style={{ fontSize: 12.5, marginBottom: 16 }}>
-            O módulo de Ordens de Serviço ainda não está integrado ao backend. Este recurso cria um vínculo de
-            demonstração, armazenado apenas neste navegador, para representar a relação entre o chamado e a ordem de
-            serviço.
-          </p>
+          <ErrorBanner message={error} />
           <form onSubmit={onSubmit}>
             <div style={{ display: 'grid', gap: 14 }}>
               <div className="field">
-                <label>Descrição da ordem de serviço</label>
-                <input value={description} onChange={(e) => setDescription(e.target.value)} required maxLength={200} />
+                <label>Ativo afetado</label>
+                <SearchableSelect
+                  value={assetId}
+                  onChange={setAssetId}
+                  placeholder="Selecione o ativo"
+                  options={(assetsQuery.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+                />
               </div>
               <div className="field">
-                <label>Responsável</label>
-                <input value={responsibleName} onChange={(e) => setResponsibleName(e.target.value)} maxLength={120} />
+                <label>Vencimento</label>
+                <input type="date" value={dueAtUtc} onChange={(e) => setDueAtUtc(e.target.value)} required />
               </div>
               <div className="field">
-                <label>Prioridade</label>
+                <label>Prioridade (opcional — herda a do chamado se vazio)</label>
                 <SearchableSelect
                   value={priority}
-                  onChange={(v) => setPriority(v as CallPriority)}
+                  onChange={(v) => setPriority(v as CallPriority | '')}
+                  placeholder={`Herdar do chamado (${priorityLabel[call.priority]})`}
                   options={[
+                    { value: '', label: `Herdar do chamado (${priorityLabel[call.priority]})` },
                     { value: 'Baixa', label: 'Baixa' },
                     { value: 'Media', label: 'Média' },
                     { value: 'Alta', label: 'Alta' }
                   ]}
                 />
               </div>
+              <div className="field">
+                <label>Assunto</label>
+                <input value={subject} onChange={(e) => setSubject(e.target.value)} required maxLength={200} />
+              </div>
             </div>
             <div className="form-actions">
               <button type="button" className="btn btn-secondary" onClick={onClose}>
                 Cancelar
               </button>
-              <button className="btn btn-primary">Converter em Ordem de Serviço</button>
+              <button className="btn btn-primary" disabled={convert.isPending}>
+                {convert.isPending ? 'Convertendo…' : 'Converter em Ordem de Serviço'}
+              </button>
             </div>
           </form>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ServiceOrderLinkModal({ link, onClose }: { link: ServiceOrderLink; onClose: () => void }) {
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-panel" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{link.description}</h2>
-          <p>Ordem de serviço vinculada</p>
-          <button type="button" className="modal-close" onClick={onClose} title="Fechar">
-            ✕
-          </button>
-        </div>
-        <div className="modal-body">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div>
-              <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-                Área
-              </div>
-              <div style={{ fontSize: 14, marginTop: 2 }}>{link.areaName}</div>
-            </div>
-            <div>
-              <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-                Responsável
-              </div>
-              <div style={{ fontSize: 14, marginTop: 2 }}>{link.responsibleName}</div>
-            </div>
-            <div>
-              <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-                Prioridade
-              </div>
-              <div style={{ fontSize: 14, marginTop: 2 }}>{priorityLabel[link.priority]}</div>
-            </div>
-            <div>
-              <div className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-                Criada em
-              </div>
-              <div style={{ fontSize: 14, marginTop: 2 }}>{formatDateTime(link.createdAtIso)}</div>
-            </div>
-          </div>
-          <p className="muted" style={{ fontSize: 12, marginTop: 18 }}>
-            Dados de demonstração — o módulo de Ordens de Serviço ainda não está integrado ao backend.
-          </p>
-        </div>
-        <div className="modal-footer">
-          <div className="form-actions" style={{ marginTop: 0 }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
-              Fechar
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -250,12 +182,12 @@ function DiretoriaCallCard({
   onError
 }: {
   call: CallListItemDto;
-  link?: ServiceOrderLink;
+  link?: ServiceOrderListItemDto;
   assignableUsers: { id: string; name: string }[];
   onView: (id: string) => void;
   onComments: (call: CallListItemDto) => void;
   onConvert: (call: CallListItemDto) => void;
-  onViewLink: (link: ServiceOrderLink) => void;
+  onViewLink: (serviceOrderId: string) => void;
   onError: (message: string) => void;
 }) {
   const assignCall = useAssignCall();
@@ -335,7 +267,7 @@ function DiretoriaCallCard({
         <button
           type="button"
           className="btn btn-secondary btn-sm"
-          onClick={() => (link ? onViewLink(link) : onConvert(call))}
+          onClick={() => (link ? onViewLink(link.id) : onConvert(call))}
           disabled={!link && call.status === 'Finished'}
         >
           <Icon path={ICONS.wrench} size={13} /> {link ? 'Ver OS' : 'Converter em OS'}
@@ -390,17 +322,21 @@ export function DiretoriaCalls() {
   const [search, setSearch] = useState('');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const calls = useCalls({ areaId: areaId || undefined, status, priority });
+  const serviceOrdersQuery = useServiceOrders({});
   const [creating, setCreating] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [commentsCall, setCommentsCall] = useState<CallListItemDto | null>(null);
   const [convertingCall, setConvertingCall] = useState<CallListItemDto | null>(null);
-  const [viewingLink, setViewingLink] = useState<ServiceOrderLink | null>(null);
-  const [links, setLinks] = useState<Record<string, ServiceOrderLink>>({});
+  const [viewingServiceOrderId, setViewingServiceOrderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setLinks(loadLinks());
-  }, []);
+  const links = useMemo(() => {
+    const map = new Map<string, ServiceOrderListItemDto>();
+    for (const o of serviceOrdersQuery.data ?? []) {
+      if (o.callId) map.set(o.callId, o);
+    }
+    return map;
+  }, [serviceOrdersQuery.data]);
 
   const assignableUsers = assignableUsersQuery.data ?? [];
   const list = calls.data ?? [];
@@ -424,7 +360,7 @@ export function DiretoriaCalls() {
       case 'critical':
         return c.priority === 'Alta' && c.status !== 'Finished';
       case 'converted-os':
-        return !!links[c.id];
+        return links.has(c.id);
       default:
         return true;
     }
@@ -435,7 +371,7 @@ export function DiretoriaCalls() {
     open: abertos,
     'in-progress': emAndamento,
     critical: criticos,
-    'converted-os': list.filter((c) => !!links[c.id]).length,
+    'converted-os': list.filter((c) => links.has(c.id)).length,
     finished: list.filter((c) => c.status === 'Finished').length
   };
 
@@ -450,15 +386,6 @@ export function DiretoriaCalls() {
       c.createdByUserName.toLowerCase().includes(searchTerm)
     );
   });
-
-  function onConfirmConvert(link: ServiceOrderLink) {
-    setLinks((prev) => {
-      const next = { ...prev, [link.callId]: link };
-      saveLinks(next);
-      return next;
-    });
-    setConvertingCall(null);
-  }
 
   return (
     <div className="page">
@@ -574,12 +501,12 @@ export function DiretoriaCalls() {
           <DiretoriaCallCard
             key={c.id}
             call={c}
-            link={links[c.id]}
+            link={links.get(c.id)}
             assignableUsers={assignableUsers}
             onView={setViewingId}
             onComments={setCommentsCall}
             onConvert={setConvertingCall}
-            onViewLink={setViewingLink}
+            onViewLink={setViewingServiceOrderId}
             onError={setError}
           />
         ))}
@@ -592,9 +519,13 @@ export function DiretoriaCalls() {
         <CallCommentsModal callId={commentsCall.id} subject={commentsCall.subject} onClose={() => setCommentsCall(null)} />
       )}
       {convertingCall && (
-        <ConvertToServiceOrderModal call={convertingCall} onClose={() => setConvertingCall(null)} onConfirm={onConfirmConvert} />
+        <ConvertToServiceOrderModal
+          call={convertingCall}
+          onClose={() => setConvertingCall(null)}
+          onConverted={() => setConvertingCall(null)}
+        />
       )}
-      {viewingLink && <ServiceOrderLinkModal link={viewingLink} onClose={() => setViewingLink(null)} />}
+      {viewingServiceOrderId && <ServiceOrderDetailModal id={viewingServiceOrderId} onClose={() => setViewingServiceOrderId(null)} />}
     </div>
   );
 }

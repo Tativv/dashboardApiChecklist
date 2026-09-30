@@ -1,13 +1,14 @@
 // Dados do Centro de Controle Operacional (visão Diretoria).
-// Checklists e Chamados usam dados reais do backend (passados via o parâmetro
-// `real`, calculados em control-center.tsx a partir de useDashboardReport,
-// useByAreaReport e useCalls). Apenas Ordens de Serviço permanece mockado —
-// esse módulo não existe de fato no backend (confirmado em auditoria do
-// repositório apiChecklist: nenhuma entidade, migração ou endpoint relacionado).
+// Checklists, Chamados e Ordens de Serviço usam dados reais do backend
+// (passados via o parâmetro `real`, calculados em control-center.tsx a partir
+// de useDashboardReport, useByAreaReport, useCalls e useServiceOrders).
+// Apenas o feed de Atividade Recente permanece mockado — não existe um módulo
+// de auditoria/eventos no backend.
 
 export type SectorStatus = 'Normal' | 'Atencao' | 'Critico';
 export type MockPriority = 'Baixa' | 'Media' | 'Alta';
 export type CallStatusValue = 'Open' | 'InProgress' | 'Finished';
+export type ServiceOrderStatusValue = 'Open' | 'InProgress' | 'Finished';
 
 export interface AreaMetrics {
   areaId: string;
@@ -20,23 +21,24 @@ export interface AreaMetrics {
   totalServiceOrders: number;
 }
 
-export interface ServiceOrderHistoryEntry {
-  date: string;
-  event: string;
-}
-
 export interface ServiceOrder {
   id: string;
-  description: string;
-  assetName: string;
+  areaId: string;
   areaName: string;
-  daysOverdue: number;
-  responsibleName: string;
+  assetId: string;
+  assetName: string;
+  callId?: string | null;
+  subject: string;
   priority: MockPriority;
-  lastExecutionLabel: string;
-  nextExecutionLabel: string;
-  overdueReason: string;
-  history: ServiceOrderHistoryEntry[];
+  status: ServiceOrderStatusValue;
+  dueAtUtc: string;
+  overdue: boolean;
+  createdByUserName: string;
+  assignedUserName?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  createdAtUtc: string;
+  commentCount: number;
 }
 
 export interface OpenCall {
@@ -124,6 +126,7 @@ export interface RealChecklistsSummaryInput {
 export interface ControlCenterRealInputs {
   areaChecklistStats?: RealAreaChecklistStat[];
   calls?: OpenCall[];
+  serviceOrders?: ServiceOrder[];
   checklistsSummary?: RealChecklistsSummaryInput;
 }
 
@@ -152,10 +155,6 @@ function seededRandom(seed: string) {
   return mulberry32(hashString(seed));
 }
 
-function pick<T>(rng: () => number, items: readonly T[]): T {
-  return items[Math.floor(rng() * items.length) % items.length];
-}
-
 function rangeInt(rng: () => number, min: number, max: number): number {
   return min + Math.floor(rng() * (max - min + 1));
 }
@@ -166,44 +165,9 @@ function deriveStatus(complianceRate: number, openCalls: number, overdueServiceO
   return 'Normal';
 }
 
-const ASSET_NAMES = [
-  'Ar-condicionado — Quarto 204',
-  'Bomba piscina principal',
-  'Elevador social 2',
-  'Caldeira spa',
-  'Gerador de emergência',
-  'Frigobar — Quarto 118',
-  'Portão automático garagem',
-  'Sistema de irrigação jardim',
-  'Câmera CFTV — Recepção',
-  'Exaustor cozinha principal'
-];
-
-const SERVICE_ORDER_DESCRIPTIONS = [
-  'Manutenção preventiva de climatização',
-  'Reparo de vazamento hidráulico',
-  'Revisão elétrica programada',
-  'Substituição de filtro de ar',
-  'Calibração de equipamento',
-  'Inspeção de segurança contra incêndio',
-  'Lubrificação de peças móveis',
-  'Atualização de firmware do sistema',
-  'Pintura e reparo estrutural',
-  'Teste de gerador de emergência'
-];
-
-const RESPONSIBLE_NAMES = ['Carlos Mendes', 'Fernanda Lima', 'Ricardo Souza', 'Patrícia Alves', 'João Pedro', 'Marina Santos'];
-
-const OVERDUE_REASONS = [
-  'Aguardando peça de reposição do fornecedor.',
-  'Equipe de manutenção alocada em urgência prioritária.',
-  'Acesso ao setor bloqueado por evento no local.',
-  'Aguardando aprovação orçamentária.',
-  'Reagendado a pedido do hóspede.'
-];
-
 function buildAreaMetrics(areas: { id: string; name: string }[], real?: ControlCenterRealInputs): AreaMetrics[] {
   const calls = real?.calls ?? [];
+  const serviceOrders = real?.serviceOrders ?? [];
   const statsByArea = new Map((real?.areaChecklistStats ?? []).map((s) => [s.areaId, s]));
 
   return areas.map(({ id, name }) => {
@@ -212,8 +176,9 @@ function buildAreaMetrics(areas: { id: string; name: string }[], real?: ControlC
     const complianceRate = stat ? stat.complianceRate : rangeInt(rng, 58, 100);
     const pendingChecklists = stat ? stat.pendingChecklists : rangeInt(rng, 0, 7);
     const openCalls = real?.calls ? calls.filter((c) => c.areaId === id && c.status !== 'Finished').length : rangeInt(rng, 0, 5);
-    const overdueServiceOrders = rangeInt(rng, 0, 4);
-    const totalServiceOrders = overdueServiceOrders + rangeInt(rng, 2, 9);
+    const areaServiceOrders = serviceOrders.filter((o) => o.areaId === id);
+    const overdueServiceOrders = real?.serviceOrders ? areaServiceOrders.filter((o) => o.overdue).length : rangeInt(rng, 0, 4);
+    const totalServiceOrders = real?.serviceOrders ? areaServiceOrders.length : overdueServiceOrders + rangeInt(rng, 2, 9);
 
     return {
       areaId: id,
@@ -228,51 +193,19 @@ function buildAreaMetrics(areas: { id: string; name: string }[], real?: ControlC
   });
 }
 
-function buildServiceOrders(areaNames: string[]): ServiceOrder[] {
-  const rng = seededRandom('service-orders-seed');
-  return Array.from({ length: 9 }).map((_, i) => {
-    const daysOverdue = rangeInt(rng, 1, 12);
-    const lastExecDaysAgo = daysOverdue + rangeInt(rng, 20, 40);
-    return {
-      id: `so-${i + 1}`,
-      description: SERVICE_ORDER_DESCRIPTIONS[i % SERVICE_ORDER_DESCRIPTIONS.length],
-      assetName: ASSET_NAMES[i % ASSET_NAMES.length],
-      areaName: areaNames[i % areaNames.length],
-      daysOverdue,
-      responsibleName: pick(rng, RESPONSIBLE_NAMES),
-      priority: pick(rng, ['Alta', 'Media', 'Baixa'] as const),
-      lastExecutionLabel: `há ${lastExecDaysAgo} dias`,
-      nextExecutionLabel: `atrasada há ${daysOverdue} dias`,
-      overdueReason: pick(rng, OVERDUE_REASONS),
-      history: [
-        { date: `há ${lastExecDaysAgo} dias`, event: 'Execução concluída dentro do prazo.' },
-        { date: `há ${lastExecDaysAgo + 32} dias`, event: 'Ordem de serviço criada a partir do plano preventivo.' },
-        { date: `há ${Math.max(1, lastExecDaysAgo - 15)} dias`, event: 'Reagendamento solicitado pela equipe de manutenção.' }
-      ]
-    };
-  });
-}
-
-function buildActivity(areaNames: string[], serviceOrders: ServiceOrder[], openCalls: OpenCall[]): ActivityEvent[] {
+function buildActivity(areaNames: string[], openCalls: OpenCall[]): ActivityEvent[] {
   const rng = seededRandom('activity-seed');
   const templates: { type: ActivityEventType; title: (i: number) => string; kind: ActivityEvent['relatedKind'] }[] = [
     { type: 'checklist_finished', title: () => 'Checklist de limpeza finalizado', kind: 'checklist' },
     { type: 'checklist_reviewed', title: () => 'Checklist revisado pela supervisão', kind: 'checklist' },
-    { type: 'service_order_started', title: (i) => `Ordem de serviço iniciada: ${serviceOrders[i % serviceOrders.length]?.description ?? 'Manutenção'}`, kind: 'serviceOrder' },
-    { type: 'service_order_finished', title: (i) => `Ordem de serviço concluída: ${serviceOrders[i % serviceOrders.length]?.description ?? 'Manutenção'}`, kind: 'serviceOrder' },
     { type: 'call_opened', title: (i) => `Chamado aberto: ${openCalls[i % Math.max(1, openCalls.length)]?.subject ?? 'Solicitação'}`, kind: 'call' },
     { type: 'call_closed', title: (i) => `Chamado encerrado: ${openCalls[i % Math.max(1, openCalls.length)]?.subject ?? 'Solicitação'}`, kind: 'call' }
   ];
 
-  return Array.from({ length: 12 }).map((_, i) => {
+  return Array.from({ length: 8 }).map((_, i) => {
     const tpl = templates[i % templates.length];
     const minutesAgo = (i + 1) * rangeInt(rng, 6, 18);
-    const relatedId =
-      tpl.kind === 'serviceOrder'
-        ? serviceOrders[i % serviceOrders.length]?.id
-        : tpl.kind === 'call' && openCalls.length > 0
-          ? openCalls[i % openCalls.length]?.id
-          : undefined;
+    const relatedId = tpl.kind === 'call' && openCalls.length > 0 ? openCalls[i % openCalls.length]?.id : undefined;
     return {
       id: `activity-${i + 1}`,
       type: tpl.type,
@@ -287,17 +220,19 @@ function buildActivity(areaNames: string[], serviceOrders: ServiceOrder[], openC
 
 export function buildControlCenterData(realAreas: { id: string; name: string }[], real?: ControlCenterRealInputs): ControlCenterData {
   // areaMetrics representa áreas reais configuradas no sistema — nunca inventa áreas.
-  // Quando não há áreas reais, usa-se um conjunto de nomes só para dar contexto aos
-  // dados mockados de Ordens de Serviço/Atividade (que não têm área real de todo jeito).
+  // Quando não há áreas reais, usa-se um conjunto de nomes só para dar contexto ao
+  // feed mockado de Atividade Recente (que não tem área real de todo jeito).
   const flavorAreas = realAreas.length > 0 ? realAreas : FALLBACK_AREAS.map((name, i) => ({ id: `mock-area-${i}`, name }));
   const areaNames = flavorAreas.map((a) => a.name);
 
   const areaMetrics = buildAreaMetrics(realAreas, real);
-  const serviceOrders = buildServiceOrders(areaNames);
-  const overdueServiceOrders = [...serviceOrders].sort((a, b) => b.daysOverdue - a.daysOverdue);
+  const serviceOrders = real?.serviceOrders ?? [];
+  const overdueServiceOrders = serviceOrders
+    .filter((o) => o.overdue)
+    .sort((a, b) => new Date(a.dueAtUtc).getTime() - new Date(b.dueAtUtc).getTime());
   const calls = real?.calls ?? [];
   const openCalls = calls.filter((c) => c.status !== 'Finished');
-  const activity = buildActivity(areaNames, serviceOrders, openCalls);
+  const activity = buildActivity(areaNames, openCalls);
 
   const checklistsInput: RealChecklistsSummaryInput = real?.checklistsSummary ?? {
     totalToday: areaMetrics.reduce((sum, a) => sum + a.pendingChecklists + rangeInt(seededRandom(a.areaId + '-done'), 3, 9), 0),
@@ -327,6 +262,18 @@ export function buildControlCenterData(realAreas: { id: string; name: string }[]
   const avgResponseMinutes =
     responseTimesMinutes.length > 0 ? Math.round(responseTimesMinutes.reduce((a, b) => a + b, 0) / responseTimesMinutes.length) : 0;
 
+  const soCompletedThisWeek = serviceOrders.filter((o) => {
+    if (o.status !== 'Finished' || !o.completedAt) return false;
+    const days = (Date.now() - new Date(o.completedAt).getTime()) / 86400000;
+    return days <= 7;
+  });
+  const resolutionHours = serviceOrders
+    .filter((o) => o.status === 'Finished' && o.completedAt)
+    .map((o) => (new Date(o.completedAt as string).getTime() - new Date(o.createdAtUtc).getTime()) / 3600000)
+    .filter((v) => v >= 0);
+  const avgResolutionHours =
+    resolutionHours.length > 0 ? Math.round(resolutionHours.reduce((a, b) => a + b, 0) / resolutionHours.length) : 0;
+
   return {
     areaMetrics,
     serviceOrders,
@@ -341,11 +288,11 @@ export function buildControlCenterData(realAreas: { id: string; name: string }[]
       trendVsYesterday: checklistsInput.trendVsYesterday
     },
     serviceOrdersSummary: {
-      open: serviceOrders.length,
-      inProgress: rangeInt(seededRandom('so-inprogress'), 2, 6),
-      completedThisWeek: rangeInt(seededRandom('so-completed'), 8, 22),
-      overdue: overdueServiceOrders.filter((o) => o.daysOverdue > 0).length,
-      avgResolutionHours: rangeInt(seededRandom('so-avg'), 6, 30)
+      open: serviceOrders.filter((o) => o.status === 'Open').length,
+      inProgress: serviceOrders.filter((o) => o.status === 'InProgress').length,
+      completedThisWeek: soCompletedThisWeek.length,
+      overdue: overdueServiceOrders.length,
+      avgResolutionHours
     },
     callsSummary: {
       open: calls.filter((c) => c.status === 'Open').length,

@@ -256,6 +256,83 @@ export interface CallCommentDto {
   contentType?: string | null;
 }
 
+export type ServiceOrderPriority = 'Baixa' | 'Media' | 'Alta';
+export type ServiceOrderStatus = 'Open' | 'InProgress' | 'Finished';
+
+export interface ServiceOrderListItemDto {
+  id: string;
+  areaId: string;
+  areaName: string;
+  assetId: string;
+  assetName: string;
+  callId?: string | null;
+  subject: string;
+  priority: ServiceOrderPriority;
+  status: ServiceOrderStatus;
+  dueAtUtc: string;
+  overdue: boolean;
+  createdByUserId: string;
+  createdByUserName: string;
+  assignedUserId?: string | null;
+  assignedUserName?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  createdAtUtc: string;
+  commentCount: number;
+}
+
+export interface ServiceOrderDto {
+  id: string;
+  areaId: string;
+  areaName: string;
+  assetId: string;
+  assetName: string;
+  callId?: string | null;
+  subject: string;
+  description?: string | null;
+  priority: ServiceOrderPriority;
+  status: ServiceOrderStatus;
+  dueAtUtc: string;
+  overdue: boolean;
+  createdByUserId: string;
+  createdByUserName: string;
+  assignedUserId?: string | null;
+  assignedUserName?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  durationSeconds?: number | null;
+  createdAtUtc: string;
+  commentCount: number;
+}
+
+export interface ConvertCallToServiceOrderResponseDto {
+  id: string;
+  areaId: string;
+  areaName: string;
+  assetId: string;
+  assetName: string;
+  callId: string;
+  subject: string;
+  description?: string | null;
+  priority: ServiceOrderPriority;
+  status: ServiceOrderStatus;
+  dueAtUtc: string;
+  overdue: boolean;
+  createdByUserId: string;
+  createdByUserName: string;
+  createdAtUtc: string;
+}
+
+export interface ServiceOrderCommentDto {
+  id: string;
+  authorUserId: string;
+  authorName: string;
+  createdAt: string;
+  text?: string | null;
+  fileName?: string | null;
+  contentType?: string | null;
+}
+
 export interface LoginResponse {
   token: string;
   expiresAtUtc: string;

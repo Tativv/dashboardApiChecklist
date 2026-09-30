@@ -52,6 +52,18 @@ export function useCallComments(callId: string, enabled = true) {
   });
 }
 
+export function useConvertCallToServiceOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ callId, input }: { callId: string; input: api.ConvertCallToServiceOrderInput }) =>
+      api.convertCallToServiceOrder(callId, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ['service-orders'] });
+    }
+  });
+}
+
 export function useAddCallComment() {
   const qc = useQueryClient();
   return useMutation({

@@ -2,7 +2,6 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { statusLabel, taskExecutionStatusLabel, roleLabel } from '@/components/ui/status-badge';
 import { formatDate, formatDuration, formatTime } from '@/lib/format';
-import type { ServiceOrder } from '@/features/control-center/mock';
 import {
   AreaDto,
   ByAreaReportItemDto,
@@ -13,6 +12,9 @@ import {
   ChecklistInstanceDetailDto,
   ChecklistInstanceListItemDto,
   DashboardReportDto,
+  ServiceOrderListItemDto,
+  ServiceOrderPriority,
+  ServiceOrderStatus,
   UserDto
 } from '@/types/api';
 
@@ -385,27 +387,31 @@ export function buildOperacionalGeralReportPdf(report: DashboardReportDto, fromD
   return { doc: ctx.doc, filename: `relatorio-operacional-geral_${fromDate}_a_${toDate}.pdf` };
 }
 
-export function buildServiceOrdersReportPdf(serviceOrders: ServiceOrder[], fromDate: string, toDate: string): GeneratedPdf {
+const SERVICE_ORDER_STATUS_LABEL: Record<ServiceOrderStatus, string> = { Open: 'Aberta', InProgress: 'Em andamento', Finished: 'Concluída' };
+const SERVICE_ORDER_PRIORITY_LABEL: Record<ServiceOrderPriority, string> = { Baixa: 'Baixa', Media: 'Média', Alta: 'Alta' };
+
+export function buildServiceOrdersReportPdf(serviceOrders: ServiceOrderListItemDto[], fromDate: string, toDate: string): GeneratedPdf {
   const ctx = createDocument('Relatório de Ordens de Serviço', `Período: ${formatDate(fromDate)} a ${formatDate(toDate)}`);
 
   autoTable(ctx.doc, {
     startY: ctx.cursorY,
     margin: { left: MARGIN, right: MARGIN },
-    head: [['Descrição', 'Área', 'Ativo', 'Dias em atraso', 'Responsável', 'Prioridade']],
-    body: serviceOrders.map((o) => [o.description, o.areaName, o.assetName, String(o.daysOverdue), o.responsibleName, o.priority]),
+    head: [['Assunto', 'Área', 'Ativo', 'Status', 'Prioridade', 'Vencimento', 'Responsável']],
+    body: serviceOrders.map((o) => [
+      o.subject,
+      o.areaName,
+      o.assetName,
+      SERVICE_ORDER_STATUS_LABEL[o.status] + (o.overdue ? ' (atrasada)' : ''),
+      SERVICE_ORDER_PRIORITY_LABEL[o.priority],
+      formatDate(o.dueAtUtc),
+      o.assignedUserName ?? 'Não designado'
+    ]),
     theme: 'striped',
     styles: { fontSize: 9, cellPadding: 7, textColor: COLOR.text, lineColor: COLOR.line, lineWidth: 0.5 },
     headStyles: { fillColor: COLOR.primary, textColor: COLOR.white, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: COLOR.band },
     columnStyles: { 0: { fontStyle: 'bold' } }
   });
-
-  ctx.cursorY = (ctx.doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18;
-  ctx.doc.setFont('helvetica', 'italic');
-  ctx.doc.setFontSize(8.5);
-  ctx.doc.setTextColor(...COLOR.textMuted);
-  ctx.doc.text('Módulo de Ordens de Serviço ainda não integrado ao sistema — dados de demonstração.', MARGIN, ctx.cursorY);
-  ctx.doc.setTextColor(...COLOR.text);
 
   drawFooters(ctx.doc);
   return { doc: ctx.doc, filename: `relatorio-ordens-servico_${fromDate}_a_${toDate}.pdf` };
