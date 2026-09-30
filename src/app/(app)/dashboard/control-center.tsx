@@ -196,8 +196,8 @@ function KpiDetailModal({ kind, data, onClose }: { kind: KpiKind; data: ReturnTy
           </div>
         </div>
         <p className="muted" style={{ fontSize: 12, marginTop: 16 }}>
-          Distribuição por área disponível na seção "Desempenho por áreas". Dados reais do relatório de checklists de
-          hoje.
+          Distribuição por Setor disponível na seção "Desempenho por Setores". Dados reais do relatório de checklists
+          de hoje.
         </p>
       </ModalShell>
     );
@@ -360,7 +360,7 @@ function AreaChecklistsTab({ areaId }: { areaId: string }) {
     <div style={{ marginTop: 16 }}>
       {instancesQuery.isLoading && <p className="muted" style={{ fontSize: 13 }}>Carregando…</p>}
       {!instancesQuery.isLoading && instances.length === 0 && (
-        <div className="card empty">Nenhum checklist programado para hoje nesta área.</div>
+        <div className="card empty">Nenhum checklist programado para hoje neste Setor.</div>
       )}
       <div style={{ display: 'grid', gap: 20 }}>
         {instances.map((i) => (
@@ -388,9 +388,9 @@ function AreaCallsTab({ area, onViewCall }: { area: AreaMetrics; onViewCall: (id
     return (
       <div style={{ marginTop: 16 }}>
         <p className="muted" style={{ fontSize: 13 }}>
-          {area.openCalls} chamado(s) em aberto nesta área.
+          {area.openCalls} chamado(s) em aberto neste Setor.
         </p>
-        {area.openCalls === 0 && <div className="card empty">Nenhum chamado em aberto nesta área.</div>}
+        {area.openCalls === 0 && <div className="card empty">Nenhum chamado em aberto neste Setor.</div>}
       </div>
     );
   }
@@ -400,7 +400,7 @@ function AreaCallsTab({ area, onViewCall }: { area: AreaMetrics; onViewCall: (id
   return (
     <div style={{ marginTop: 16 }}>
       {callsQuery.isLoading && <p className="muted" style={{ fontSize: 13 }}>Carregando…</p>}
-      {!callsQuery.isLoading && calls.length === 0 && <div className="card empty">Nenhum chamado em aberto nesta área.</div>}
+      {!callsQuery.isLoading && calls.length === 0 && <div className="card empty">Nenhum chamado em aberto neste Setor.</div>}
       {calls.length > 0 && (
         <div className="table-wrap">
           <table className="table">
@@ -446,7 +446,7 @@ function AreaServiceOrdersTab({ area, onViewServiceOrder }: { area: AreaMetrics;
   return (
     <div style={{ marginTop: 16 }}>
       {serviceOrdersQuery.isLoading && <p className="muted" style={{ fontSize: 13 }}>Carregando…</p>}
-      {!serviceOrdersQuery.isLoading && orders.length === 0 && <div className="card empty">Nenhuma ordem de serviço em aberto nesta área.</div>}
+      {!serviceOrdersQuery.isLoading && orders.length === 0 && <div className="card empty">Nenhuma ordem de serviço em aberto neste Setor.</div>}
       {orders.length > 0 && (
         <div className="table-wrap">
           <table className="table">
@@ -490,6 +490,68 @@ function AreaServiceOrdersTab({ area, onViewServiceOrder }: { area: AreaMetrics;
   );
 }
 
+interface AreaHistoryEvent {
+  id: string;
+  text: string;
+  atIso: string;
+  kind: 'call' | 'serviceOrder';
+  relatedId: string;
+}
+
+function AreaHistoryTab({
+  area,
+  onViewCall,
+  onViewServiceOrder
+}: {
+  area: AreaMetrics;
+  onViewCall: (id: string) => void;
+  onViewServiceOrder: (id: string) => void;
+}) {
+  const callsQuery = useCalls({ areaId: area.areaId });
+  const serviceOrdersQuery = useServiceOrders({ areaId: area.areaId });
+
+  const events = useMemo(() => {
+    const list: AreaHistoryEvent[] = [];
+    for (const c of callsQuery.data ?? []) {
+      list.push({ id: `call-open-${c.id}`, text: `Chamado aberto: ${c.subject}`, atIso: c.createdAtUtc, kind: 'call', relatedId: c.id });
+      if (c.completedAt) {
+        list.push({ id: `call-close-${c.id}`, text: `Chamado encerrado: ${c.subject}`, atIso: c.completedAt, kind: 'call', relatedId: c.id });
+      }
+    }
+    for (const o of serviceOrdersQuery.data ?? []) {
+      list.push({ id: `so-open-${o.id}`, text: `Ordem de serviço criada: ${o.subject}`, atIso: o.createdAtUtc, kind: 'serviceOrder', relatedId: o.id });
+      if (o.completedAt) {
+        list.push({ id: `so-close-${o.id}`, text: `Ordem de serviço concluída: ${o.subject}`, atIso: o.completedAt, kind: 'serviceOrder', relatedId: o.id });
+      }
+    }
+    return list.sort((a, b) => new Date(b.atIso).getTime() - new Date(a.atIso).getTime()).slice(0, 20);
+  }, [callsQuery.data, serviceOrdersQuery.data]);
+
+  const isLoading = callsQuery.isLoading || serviceOrdersQuery.isLoading;
+
+  return (
+    <div className="timeline" style={{ marginTop: 16 }}>
+      {isLoading && <p className="muted" style={{ fontSize: 13 }}>Carregando…</p>}
+      {!isLoading && events.length === 0 && <div className="card empty">Nenhum evento registrado neste Setor ainda.</div>}
+      {events.map((ev) => (
+        <button
+          type="button"
+          className="timeline-item event"
+          key={ev.id}
+          style={{ width: '100%', textAlign: 'left', background: 'none', border: 0, cursor: 'pointer', padding: 0 }}
+          onClick={() => (ev.kind === 'call' ? onViewCall(ev.relatedId) : onViewServiceOrder(ev.relatedId))}
+        >
+          <span className="timeline-dot" />
+          <div className="timeline-text">{ev.text}</div>
+          <div className="timeline-meta">
+            <span>{formatDateTime(ev.atIso)}</span>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function AreaDetailModal({
   area,
   onClose,
@@ -504,7 +566,7 @@ function AreaDetailModal({
   const [tab, setTab] = useState<AreaTab>('Resumo');
 
   return (
-    <ModalShell title={area.areaName} subtitle="Visão operacional da área" onClose={onClose} maxWidth={720}>
+    <ModalShell title={area.areaName} subtitle="Visão operacional do Setor" onClose={onClose} maxWidth={720}>
       <div className="cc-tabs">
         {AREA_TABS.map((t) => (
           <button key={t} type="button" className={'cc-tab' + (tab === t ? ' active' : '')} onClick={() => setTab(t)}>
@@ -543,24 +605,7 @@ function AreaDetailModal({
 
       {tab === 'Chamados' && <AreaCallsTab area={area} onViewCall={onViewCall} />}
 
-      {tab === 'Histórico' && (
-        <div className="timeline" style={{ marginTop: 16 }}>
-          <div className="timeline-item event">
-            <span className="timeline-dot" />
-            <div className="timeline-text">Índice de cumprimento atingiu {area.complianceRate}% nos últimos 7 dias.</div>
-            <div className="timeline-meta">
-              <span>Atualizado automaticamente</span>
-            </div>
-          </div>
-          <div className="timeline-item event">
-            <span className="timeline-dot" />
-            <div className="timeline-text">Última auditoria de área concluída sem pendências críticas.</div>
-            <div className="timeline-meta">
-              <span>há 5 dias</span>
-            </div>
-          </div>
-        </div>
-      )}
+      {tab === 'Histórico' && <AreaHistoryTab area={area} onViewCall={onViewCall} onViewServiceOrder={onViewServiceOrder} />}
     </ModalShell>
   );
 }
@@ -569,8 +614,7 @@ function ActivityDetailModal({ event, onClose }: { event: ActivityEvent; onClose
   return (
     <ModalShell title={event.title} subtitle={`${event.areaName} · ${event.timeLabel}`} onClose={onClose}>
       <p className="muted" style={{ fontSize: 13 }}>
-        Evento de demonstração — quando o módulo correspondente estiver conectado, este card abrirá o checklist real
-        relacionado.
+        Este evento não tem um registro relacionado para abrir.
       </p>
     </ModalShell>
   );
@@ -600,7 +644,7 @@ function SectorsStatusModal({
             </div>
             {list.length === 0 && (
               <p className="muted" style={{ fontSize: 12, marginLeft: 18 }}>
-                Nenhuma área neste status.
+                Nenhum Setor neste status.
               </p>
             )}
             {list.length > 0 && (
@@ -636,16 +680,16 @@ function AllAreasModal({ areas, onSelect, onClose }: { areas: AreaMetrics[]; onS
   const filtered = term ? areas.filter((a) => a.areaName.toLowerCase().includes(term)) : areas;
 
   return (
-    <ModalShell title="Todas as áreas" subtitle={`${areas.length} áreas configuradas`} onClose={onClose} maxWidth={780}>
+    <ModalShell title="Todos os Setores" subtitle={`${areas.length} Setores configurados`} onClose={onClose} maxWidth={780}>
       <input
         type="search"
         className="search"
-        placeholder="Buscar área…"
+        placeholder="Buscar Setor…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         style={{ width: '100%', marginBottom: 16 }}
       />
-      {filtered.length === 0 && <div className="card empty">Nenhuma área encontrada.</div>}
+      {filtered.length === 0 && <div className="card empty">Nenhum Setor encontrado.</div>}
       <div className="cc-area-grid">
         {filtered.map((a) => {
           const icon = areaIcon(a.areaName);
@@ -793,10 +837,8 @@ export function ControlCenter() {
   }, [searchParams]);
 
   function onActivityClick(ev: ActivityEvent) {
-    if (ev.relatedKind === 'call') {
-      const c = data.openCalls.find((c) => c.id === ev.relatedId);
-      if (c) return setOpenCallId(c.id);
-    }
+    if (ev.relatedKind === 'call' && ev.relatedId) return setOpenCallId(ev.relatedId);
+    if (ev.relatedKind === 'serviceOrder' && ev.relatedId) return setOpenServiceOrderId(ev.relatedId);
     setOpenActivity(ev);
   }
 
@@ -948,18 +990,18 @@ export function ControlCenter() {
         <section className="card cc-desempenho-card">
           <div className="cc-card-header-row">
             <h2 className="card-title" style={{ margin: 0 }}>
-              Desempenho por áreas
+              Desempenho por Setores
             </h2>
             {data.areaMetrics.length > 6 && (
               <button type="button" className="cc-link-btn" onClick={() => setShowAllAreas(true)}>
-                Ver todas as áreas
+                Ver todos os Setores
               </button>
             )}
           </div>
-          {areasQuery.isLoading && <p className="muted" style={{ fontSize: 13 }}>Carregando áreas…</p>}
+          {areasQuery.isLoading && <p className="muted" style={{ fontSize: 13 }}>Carregando Setores…</p>}
           {!areasQuery.isLoading && data.areaMetrics.length === 0 && (
             <div className="card empty">
-              Nenhuma área configurada ainda.{' '}
+              Nenhum Setor configurado ainda.{' '}
               <Link href="/areas" className="cc-link-btn" style={{ display: 'inline' }}>
                 Configurar áreas
               </Link>

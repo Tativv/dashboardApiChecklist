@@ -1,9 +1,11 @@
 // Dados do Centro de Controle Operacional (visão Diretoria).
-// Checklists, Chamados e Ordens de Serviço usam dados reais do backend
-// (passados via o parâmetro `real`, calculados em control-center.tsx a partir
-// de useDashboardReport, useByAreaReport, useCalls e useServiceOrders).
-// Apenas o feed de Atividade Recente permanece mockado — não existe um módulo
-// de auditoria/eventos no backend.
+// Checklists, Chamados, Ordens de Serviço e o feed de Atividade Recente usam
+// dados reais do backend (passados via o parâmetro `real`, calculados em
+// control-center.tsx a partir de useDashboardReport, useByAreaReport,
+// useCalls e useServiceOrders). A Atividade Recente é derivada dos próprios
+// Chamados/Ordens de Serviço (criação/conclusão) — não existe uma tabela de
+// eventos/auditoria dedicada no backend, então não há eventos de Checklist
+// aqui (a lista de instâncias não expõe timestamp de criação/conclusão).
 
 export type SectorStatus = 'Normal' | 'Atencao' | 'Critico';
 export type MockPriority = 'Baixa' | 'Media' | 'Alta';
@@ -130,8 +132,6 @@ export interface ControlCenterRealInputs {
   checklistsSummary?: RealChecklistsSummaryInput;
 }
 
-const FALLBACK_AREAS = ['Governança', 'Manutenção', 'Recepção', 'Alimentos e Bebidas', 'Lazer e Spa'];
-
 function hashString(input: string): number {
   let h = 0;
   for (let i = 0; i < input.length; i++) {
@@ -193,38 +193,90 @@ function buildAreaMetrics(areas: { id: string; name: string }[], real?: ControlC
   });
 }
 
-function buildActivity(areaNames: string[], openCalls: OpenCall[]): ActivityEvent[] {
-  const rng = seededRandom('activity-seed');
-  const templates: { type: ActivityEventType; title: (i: number) => string; kind: ActivityEvent['relatedKind'] }[] = [
-    { type: 'checklist_finished', title: () => 'Checklist de limpeza finalizado', kind: 'checklist' },
-    { type: 'checklist_reviewed', title: () => 'Checklist revisado pela supervisão', kind: 'checklist' },
-    { type: 'call_opened', title: (i) => `Chamado aberto: ${openCalls[i % Math.max(1, openCalls.length)]?.subject ?? 'Solicitação'}`, kind: 'call' },
-    { type: 'call_closed', title: (i) => `Chamado encerrado: ${openCalls[i % Math.max(1, openCalls.length)]?.subject ?? 'Solicitação'}`, kind: 'call' }
-  ];
+function relativeTimeLabel(iso: string): string {
+  const minutesAgo = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (minutesAgo < 1) return 'agora';
+  if (minutesAgo < 60) return `há ${minutesAgo} min`;
+  const hoursAgo = Math.round(minutesAgo / 60);
+  if (hoursAgo < 24) return `há ${hoursAgo}h`;
+  return `há ${Math.round(hoursAgo / 24)} dia(s)`;
+}
 
-  return Array.from({ length: 8 }).map((_, i) => {
-    const tpl = templates[i % templates.length];
-    const minutesAgo = (i + 1) * rangeInt(rng, 6, 18);
-    const relatedId = tpl.kind === 'call' && openCalls.length > 0 ? openCalls[i % openCalls.length]?.id : undefined;
-    return {
-      id: `activity-${i + 1}`,
-      type: tpl.type,
-      title: tpl.title(i),
-      areaName: areaNames[i % areaNames.length],
-      timeLabel: minutesAgo >= 60 ? `há ${Math.round(minutesAgo / 60)}h` : `há ${minutesAgo} min`,
-      relatedKind: tpl.kind,
-      relatedId
-    };
-  });
+interface RawActivityEvent {
+  id: string;
+  type: ActivityEventType;
+  title: string;
+  areaName: string;
+  atIso: string;
+  relatedKind: ActivityEvent['relatedKind'];
+  relatedId: string;
+}
+
+function buildActivity(calls: OpenCall[], serviceOrders: ServiceOrder[]): ActivityEvent[] {
+  const raw: RawActivityEvent[] = [];
+
+  for (const c of calls) {
+    raw.push({
+      id: `call-open-${c.id}`,
+      type: 'call_opened',
+      title: `Chamado aberto: ${c.subject}`,
+      areaName: c.areaName,
+      atIso: c.createdAtUtc,
+      relatedKind: 'call',
+      relatedId: c.id
+    });
+    if (c.completedAt) {
+      raw.push({
+        id: `call-close-${c.id}`,
+        type: 'call_closed',
+        title: `Chamado encerrado: ${c.subject}`,
+        areaName: c.areaName,
+        atIso: c.completedAt,
+        relatedKind: 'call',
+        relatedId: c.id
+      });
+    }
+  }
+
+  for (const o of serviceOrders) {
+    raw.push({
+      id: `so-open-${o.id}`,
+      type: 'service_order_started',
+      title: `Ordem de serviço criada: ${o.subject}`,
+      areaName: o.areaName,
+      atIso: o.createdAtUtc,
+      relatedKind: 'serviceOrder',
+      relatedId: o.id
+    });
+    if (o.completedAt) {
+      raw.push({
+        id: `so-close-${o.id}`,
+        type: 'service_order_finished',
+        title: `Ordem de serviço concluída: ${o.subject}`,
+        areaName: o.areaName,
+        atIso: o.completedAt,
+        relatedKind: 'serviceOrder',
+        relatedId: o.id
+      });
+    }
+  }
+
+  return raw
+    .sort((a, b) => new Date(b.atIso).getTime() - new Date(a.atIso).getTime())
+    .slice(0, 30)
+    .map((ev) => ({
+      id: ev.id,
+      type: ev.type,
+      title: ev.title,
+      areaName: ev.areaName,
+      timeLabel: relativeTimeLabel(ev.atIso),
+      relatedKind: ev.relatedKind,
+      relatedId: ev.relatedId
+    }));
 }
 
 export function buildControlCenterData(realAreas: { id: string; name: string }[], real?: ControlCenterRealInputs): ControlCenterData {
   // areaMetrics representa áreas reais configuradas no sistema — nunca inventa áreas.
-  // Quando não há áreas reais, usa-se um conjunto de nomes só para dar contexto ao
-  // feed mockado de Atividade Recente (que não tem área real de todo jeito).
-  const flavorAreas = realAreas.length > 0 ? realAreas : FALLBACK_AREAS.map((name, i) => ({ id: `mock-area-${i}`, name }));
-  const areaNames = flavorAreas.map((a) => a.name);
-
   const areaMetrics = buildAreaMetrics(realAreas, real);
   const serviceOrders = real?.serviceOrders ?? [];
   const overdueServiceOrders = serviceOrders
@@ -232,7 +284,7 @@ export function buildControlCenterData(realAreas: { id: string; name: string }[]
     .sort((a, b) => new Date(a.dueAtUtc).getTime() - new Date(b.dueAtUtc).getTime());
   const calls = real?.calls ?? [];
   const openCalls = calls.filter((c) => c.status !== 'Finished');
-  const activity = buildActivity(areaNames, openCalls);
+  const activity = buildActivity(calls, serviceOrders);
 
   const checklistsInput: RealChecklistsSummaryInput = real?.checklistsSummary ?? {
     totalToday: areaMetrics.reduce((sum, a) => sum + a.pendingChecklists + rangeInt(seededRandom(a.areaId + '-done'), 3, 9), 0),
