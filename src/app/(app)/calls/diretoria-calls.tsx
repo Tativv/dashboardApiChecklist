@@ -13,7 +13,8 @@ import { CallListItemDto, CallPriority, CallStatus, ServiceOrderListItemDto } fr
 import { priorityLabel, priorityClass, statusLabel, statusClass, CreateCallForm, CallCommentsModal, CallDetailModal } from './shared';
 import { ServiceOrderDetailModal } from '../service-orders/shared';
 
-const PRIORITY_BAR_COLOR: Record<CallPriority, string> = { Baixa: '#5b3fd6', Media: '#315bd6', Alta: '#c43c35' };
+const STATUS_BAR_COLOR: Record<CallStatus, string> = { Open: '#64748b', InProgress: '#315bd6', Finished: '#16794e' };
+const CONVERTED_BAR_COLOR = '#7c3aed';
 
 function elapsedShort(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -199,7 +200,7 @@ function DiretoriaCallCard({
     }
   }
 
-  const accentColor = PRIORITY_BAR_COLOR[call.priority];
+  const accentColor = link ? CONVERTED_BAR_COLOR : STATUS_BAR_COLOR[call.status];
   const statusBadge = link
     ? { label: 'Convertido em OS', className: 'status ready' }
     : { label: statusLabel[call.status], className: 'status ' + statusClass[call.status] };
