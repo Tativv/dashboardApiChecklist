@@ -29,6 +29,11 @@ export function isSystemServiceOrderComment(text?: string | null): boolean {
   return SYSTEM_SERVICE_ORDER_COMMENT_TEXTS.has(text) || text.startsWith('Ordem de serviço designada a ');
 }
 
+// A prioridade não se mostra mais no formulário (a pedido do usuário), mas o backend
+// ainda a exige como campo obrigatório em POST /service-orders/ — enquanto isso não
+// muda no backend, se manda este valor fixo por baixo dos panos.
+const DEFAULT_PRIORITY: ServiceOrderPriority = 'Media';
+
 export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
   const areas = useAreas();
   const createServiceOrder = useCreateServiceOrder();
@@ -37,7 +42,6 @@ export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
   const assetsQuery = useAssets({ areaId: areaId || undefined, active: true });
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<ServiceOrderPriority>('Media');
   const [dueAtUtc, setDueAtUtc] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -53,7 +57,7 @@ export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
         assetId,
         subject,
         description: description || null,
-        priority,
+        priority: DEFAULT_PRIORITY,
         dueAtUtc: new Date(`${dueAtUtc}T23:59:59`).toISOString()
       });
       onClose();
@@ -63,72 +67,80 @@ export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="panel" style={{ marginBottom: 20, maxWidth: 620 }}>
-      <h2 className="card-title">Criar ordem de serviço</h2>
-      <ErrorBanner message={error} />
-      <form onSubmit={onSubmit}>
-        <div className="form-grid">
-          <div className="field">
-            <label>Área</label>
-            <SearchableSelect
-              value={areaId}
-              onChange={(v) => {
-                setAreaId(v);
-                setAssetId('');
-              }}
-              placeholder="Selecione a área"
-              options={(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
-            />
-          </div>
-          <div className="field">
-            <label>Ativo</label>
-            <SearchableSelect
-              value={assetId}
-              onChange={setAssetId}
-              placeholder={areaId ? 'Selecione o ativo' : 'Selecione a área primeiro'}
-              options={(assetsQuery.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
-            />
-          </div>
-          <div className="field">
-            <label>Prioridade</label>
-            <SearchableSelect
-              value={priority}
-              onChange={(v) => setPriority(v as ServiceOrderPriority)}
-              options={[
-                { value: 'Baixa', label: 'Baixa' },
-                { value: 'Media', label: 'Média' },
-                { value: 'Alta', label: 'Alta' }
-              ]}
-            />
-          </div>
-          <div className="field">
-            <label>Vencimento</label>
-            <input type="date" value={dueAtUtc} onChange={(e) => setDueAtUtc(e.target.value)} required />
-          </div>
-          <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <label>Assunto</label>
-            <input value={subject} onChange={(e) => setSubject(e.target.value)} required maxLength={200} />
-          </div>
-          <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <label>Descrição</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={2000}
-              rows={4}
-              style={{ width: '100%', resize: 'vertical' }}
-            />
+    <div className="side-panel-overlay" onClick={onClose}>
+      <div className="side-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="side-panel-header">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Nova ordem de serviço</h2>
+              <p className="muted" style={{ margin: '4px 0 0', fontSize: 12.5 }}>
+                Defina o ativo, o vencimento e o assunto
+              </p>
+            </div>
+            <button type="button" className="modal-close" onClick={onClose} title="Fechar">
+              ✕
+            </button>
           </div>
         </div>
-        <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
-            Cancelar
-          </button>
-          <button className="btn btn-primary" disabled={createServiceOrder.isPending}>
-            {createServiceOrder.isPending ? 'Criando…' : 'Criar ordem de serviço'}
-          </button>
+
+        <div className="side-panel-body">
+          <ErrorBanner message={error} />
+          <form id="create-service-order-form" onSubmit={onSubmit}>
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div className="field">
+                <label>Área</label>
+                <SearchableSelect
+                  value={areaId}
+                  onChange={(v) => {
+                    setAreaId(v);
+                    setAssetId('');
+                  }}
+                  placeholder="Selecione a área"
+                  options={(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+                />
+              </div>
+              <div className="field">
+                <label>Ativo</label>
+                <SearchableSelect
+                  value={assetId}
+                  onChange={setAssetId}
+                  placeholder={areaId ? 'Selecione o ativo' : 'Selecione a área primeiro'}
+                  options={(assetsQuery.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+                />
+              </div>
+              <div className="field">
+                <label>Vencimento</label>
+                <input type="date" value={dueAtUtc} onChange={(e) => setDueAtUtc(e.target.value)} required />
+              </div>
+              <div className="field">
+                <label>Assunto</label>
+                <input value={subject} onChange={(e) => setSubject(e.target.value)} required maxLength={200} />
+              </div>
+              <div className="field">
+                <label>Descrição</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  maxLength={2000}
+                  rows={4}
+                  style={{ width: '100%', resize: 'vertical' }}
+                />
+              </div>
+            </div>
+          </form>
         </div>
-      </form>
+
+        <div className="side-panel-footer">
+          <div className="form-actions" style={{ marginTop: 0 }}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              Cancelar
+            </button>
+            <button type="submit" form="create-service-order-form" className="btn btn-primary" disabled={createServiceOrder.isPending}>
+              {createServiceOrder.isPending ? 'Criando…' : 'Criar ordem de serviço'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
