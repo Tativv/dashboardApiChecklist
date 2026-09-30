@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
-import { useCall, useCallComments, useAddCallComment, useCreateCall } from '@/features/calls/hooks';
+import { useEffect, useState } from 'react';
+import { useCall, useCallComments, useAddCallComment, useCreateCall, useUpdateCall } from '@/features/calls/hooks';
 import { fetchCallCommentFileBlobUrl } from '@/features/calls/api';
 import { useAreas } from '@/features/areas/hooks';
+import { useAuthStore, isSupervisorOrAbove } from '@/features/auth/store';
 import { CommentsTimelineModal } from '@/components/ui/comments-timeline-modal';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { SearchableSelect } from '@/components/ui/searchable-select';
@@ -20,6 +21,56 @@ const SYSTEM_CALL_COMMENT_TEXTS = new Set(['Chamado iniciado.', 'Chamado conclu�
 export function isSystemCallComment(text?: string | null): boolean {
   if (!text) return false;
   return SYSTEM_CALL_COMMENT_TEXTS.has(text) || text.startsWith('Chamado designado a ');
+}
+
+interface CallFormState {
+  areaId: string;
+  subject: string;
+  description: string;
+  priority: CallPriority;
+}
+
+function CallFormFields({ form, setForm }: { form: CallFormState; setForm: (f: CallFormState) => void }) {
+  const areas = useAreas();
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div className="field">
+        <label>Área destino</label>
+        <SearchableSelect
+          value={form.areaId}
+          onChange={(v) => setForm({ ...form, areaId: v })}
+          placeholder="Selecione a área"
+          options={(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+        />
+      </div>
+      <div className="field">
+        <label>Prioridade</label>
+        <SearchableSelect
+          value={form.priority}
+          onChange={(v) => setForm({ ...form, priority: v as CallPriority })}
+          options={[
+            { value: 'Baixa', label: 'Baixa' },
+            { value: 'Media', label: 'Média' },
+            { value: 'Alta', label: 'Alta' }
+          ]}
+        />
+      </div>
+      <div className="field">
+        <label>Assunto</label>
+        <input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required maxLength={200} />
+      </div>
+      <div className="field">
+        <label>Descrição</label>
+        <textarea
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          maxLength={2000}
+          rows={4}
+          style={{ width: '100%', resize: 'vertical' }}
+        />
+      </div>
+    </div>
+  );
 }
 
 export function CreateCallForm({ onClose }: { onClose: () => void }) {
@@ -176,23 +227,61 @@ export function DetailField({ label, value }: { label: string; value: React.Reac
 }
 
 export function CallDetailModal({ id, onClose }: { id: string; onClose: () => void }) {
+  const user = useAuthStore((s) => s.user);
+  const canManage = isSupervisorOrAbove(user?.role);
+
   const call = useCall(id);
   const c = call.data;
+  const updateCall = useUpdateCall();
+
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<CallFormState>({ areaId: '', subject: '', description: '', priority: 'Media' });
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (c) {
+      setForm({ areaId: c.areaId, subject: c.subject, description: c.description ?? '', priority: c.priority });
+    }
+  }, [c]);
+
+  async function onSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!c) return;
+    setError(null);
+    if (!form.areaId) return setError('Selecione a área destino.');
+    try {
+      await updateCall.mutateAsync({
+        id: c.id,
+        input: { areaId: form.areaId, subject: form.subject, description: form.description || null, priority: form.priority }
+      });
+      setEditing(false);
+    } catch (err) {
+      setError(toApiError(err).message);
+    }
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{c ? c.subject : 'Chamado'}</h2>
+          <h2>{editing ? 'Editar chamado' : c ? c.subject : 'Chamado'}</h2>
           <p>Detalhes do chamado</p>
           <button type="button" className="modal-close" onClick={onClose} title="Fechar">
             ✕
           </button>
         </div>
         <div className="modal-body">
+          <ErrorBanner message={error} />
           {call.isLoading && <p className="muted">Carregando…</p>}
           {!call.isLoading && !c && <p className="muted">Chamado não encontrado.</p>}
-          {c && (
+
+          {c && editing && (
+            <form id="edit-call-form" onSubmit={onSave}>
+              <CallFormFields form={form} setForm={setForm} />
+            </form>
+          )}
+
+          {c && !editing && (
             <>
               <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
                 <span className={'status ' + priorityClass[c.priority]}>{priorityLabel[c.priority]}</span>
@@ -221,10 +310,28 @@ export function CallDetailModal({ id, onClose }: { id: string; onClose: () => vo
           )}
         </div>
         <div className="modal-footer">
-          <div className="form-actions" style={{ marginTop: 0 }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
-              Fechar
-            </button>
+          <div className="form-actions" style={{ marginTop: 0, justifyContent: 'space-between' }}>
+            {c && !editing && canManage && (
+              <button type="button" className="btn btn-secondary" onClick={() => setEditing(true)}>
+                Editar
+              </button>
+            )}
+            <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+              {editing ? (
+                <>
+                  <button type="button" className="btn btn-secondary" onClick={() => setEditing(false)} disabled={updateCall.isPending}>
+                    Cancelar
+                  </button>
+                  <button type="submit" form="edit-call-form" className="btn btn-primary" disabled={updateCall.isPending}>
+                    {updateCall.isPending ? 'Salvando…' : 'Salvar'}
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="btn btn-secondary" onClick={onClose}>
+                  Fechar
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

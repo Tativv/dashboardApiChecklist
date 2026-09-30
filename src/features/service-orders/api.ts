@@ -38,6 +38,11 @@ export async function createServiceOrder(input: CreateServiceOrderInput): Promis
   return data;
 }
 
+export async function updateServiceOrder(id: string, input: CreateServiceOrderInput): Promise<ServiceOrderDto> {
+  const { data } = await http.put<ServiceOrderDto>(`/service-orders/${id}`, input);
+  return data;
+}
+
 export async function assignServiceOrder(id: string, userId: string | null) {
   const { data } = await http.post(`/service-orders/${id}/assign`, { userId });
   return data as { id: string; assignedUserId?: string | null; assignedUserName?: string | null };

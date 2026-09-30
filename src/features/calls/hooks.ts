@@ -20,6 +20,14 @@ export function useCreateCall() {
   });
 }
 
+export function useUpdateCall() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: api.UpdateCallInput }) => api.updateCall(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY })
+  });
+}
+
 export function useAssignCall() {
   const qc = useQueryClient();
   return useMutation({

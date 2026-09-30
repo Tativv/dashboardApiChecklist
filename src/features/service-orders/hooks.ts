@@ -20,6 +20,14 @@ export function useCreateServiceOrder() {
   });
 }
 
+export function useUpdateServiceOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: api.CreateServiceOrderInput }) => api.updateServiceOrder(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY })
+  });
+}
+
 export function useAssignServiceOrder() {
   const qc = useQueryClient();
   return useMutation({

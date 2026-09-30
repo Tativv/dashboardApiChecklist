@@ -42,6 +42,18 @@ export async function createCall(input: CreateCallInput): Promise<CallDto> {
   return data;
 }
 
+export interface UpdateCallInput {
+  areaId: string;
+  subject: string;
+  description?: string | null;
+  priority: CallPriority;
+}
+
+export async function updateCall(id: string, input: UpdateCallInput): Promise<CallDto> {
+  const { data } = await http.put<CallDto>(`/calls/${id}`, input);
+  return data;
+}
+
 export async function assignCall(id: string, userId: string | null) {
   const { data } = await http.post(`/calls/${id}/assign`, { userId });
   return data as { id: string; assignedUserId?: string | null; assignedUserName?: string | null };

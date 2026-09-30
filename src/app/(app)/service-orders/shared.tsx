@@ -1,14 +1,17 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   useServiceOrder,
   useServiceOrderComments,
   useAddServiceOrderComment,
-  useCreateServiceOrder
+  useCreateServiceOrder,
+  useUpdateServiceOrder,
+  useDeleteServiceOrder
 } from '@/features/service-orders/hooks';
 import { fetchServiceOrderCommentFileBlobUrl } from '@/features/service-orders/api';
 import { useAreas } from '@/features/areas/hooks';
 import { useAssets } from '@/features/assets/hooks';
+import { useAuthStore, isSupervisorOrAbove, isManagerOrAbove } from '@/features/auth/store';
 import { CommentsTimelineModal } from '@/components/ui/comments-timeline-modal';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { SearchableSelect } from '@/components/ui/searchable-select';
@@ -34,31 +37,83 @@ export function isSystemServiceOrderComment(text?: string | null): boolean {
 // muda no backend, se manda este valor fixo por baixo dos panos.
 const DEFAULT_PRIORITY: ServiceOrderPriority = 'Media';
 
-export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
+interface ServiceOrderFormState {
+  areaId: string;
+  assetId: string;
+  subject: string;
+  description: string;
+  dueAtUtc: string;
+}
+
+function emptyServiceOrderForm(): ServiceOrderFormState {
+  return { areaId: '', assetId: '', subject: '', description: '', dueAtUtc: '' };
+}
+
+function ServiceOrderFormFields({ form, setForm }: { form: ServiceOrderFormState; setForm: (f: ServiceOrderFormState) => void }) {
   const areas = useAreas();
+  const assetsQuery = useAssets({ areaId: form.areaId || undefined, active: true });
+
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div className="field">
+        <label>Setor</label>
+        <SearchableSelect
+          value={form.areaId}
+          onChange={(v) => setForm({ ...form, areaId: v, assetId: '' })}
+          placeholder="Selecione o setor"
+          options={(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+        />
+      </div>
+      <div className="field">
+        <label>Ativo</label>
+        <SearchableSelect
+          value={form.assetId}
+          onChange={(v) => setForm({ ...form, assetId: v })}
+          placeholder={form.areaId ? 'Selecione o ativo' : 'Selecione o setor primeiro'}
+          options={(assetsQuery.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+        />
+      </div>
+      <div className="field">
+        <label>Vencimento</label>
+        <input type="date" value={form.dueAtUtc} onChange={(e) => setForm({ ...form, dueAtUtc: e.target.value })} required />
+      </div>
+      <div className="field">
+        <label>Nome da Ordem de Serviço</label>
+        <input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required maxLength={200} />
+      </div>
+      <div className="field">
+        <label>Descrição</label>
+        <textarea
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          maxLength={2000}
+          rows={4}
+          style={{ width: '100%', resize: 'vertical' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
   const createServiceOrder = useCreateServiceOrder();
-  const [areaId, setAreaId] = useState('');
-  const [assetId, setAssetId] = useState('');
-  const assetsQuery = useAssets({ areaId: areaId || undefined, active: true });
-  const [subject, setSubject] = useState('');
-  const [description, setDescription] = useState('');
-  const [dueAtUtc, setDueAtUtc] = useState('');
+  const [form, setForm] = useState<ServiceOrderFormState>(emptyServiceOrderForm());
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!areaId) return setError('Selecione o setor.');
-    if (!assetId) return setError('Selecione o ativo.');
-    if (!dueAtUtc) return setError('Selecione a data de vencimento.');
+    if (!form.areaId) return setError('Selecione o setor.');
+    if (!form.assetId) return setError('Selecione o ativo.');
+    if (!form.dueAtUtc) return setError('Selecione a data de vencimento.');
     try {
       await createServiceOrder.mutateAsync({
-        areaId,
-        assetId,
-        subject,
-        description: description || null,
+        areaId: form.areaId,
+        assetId: form.assetId,
+        subject: form.subject,
+        description: form.description || null,
         priority: DEFAULT_PRIORITY,
-        dueAtUtc: new Date(`${dueAtUtc}T23:59:59`).toISOString()
+        dueAtUtc: new Date(`${form.dueAtUtc}T23:59:59`).toISOString()
       });
       onClose();
     } catch (err) {
@@ -86,47 +141,7 @@ export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
         <div className="side-panel-body">
           <ErrorBanner message={error} />
           <form id="create-service-order-form" onSubmit={onSubmit}>
-            <div style={{ display: 'grid', gap: 14 }}>
-              <div className="field">
-                <label>Setor</label>
-                <SearchableSelect
-                  value={areaId}
-                  onChange={(v) => {
-                    setAreaId(v);
-                    setAssetId('');
-                  }}
-                  placeholder="Selecione o setor"
-                  options={(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
-                />
-              </div>
-              <div className="field">
-                <label>Ativo</label>
-                <SearchableSelect
-                  value={assetId}
-                  onChange={setAssetId}
-                  placeholder={areaId ? 'Selecione o ativo' : 'Selecione o setor primeiro'}
-                  options={(assetsQuery.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
-                />
-              </div>
-              <div className="field">
-                <label>Vencimento</label>
-                <input type="date" value={dueAtUtc} onChange={(e) => setDueAtUtc(e.target.value)} required />
-              </div>
-              <div className="field">
-                <label>Nome da Ordem de Serviço</label>
-                <input value={subject} onChange={(e) => setSubject(e.target.value)} required maxLength={200} />
-              </div>
-              <div className="field">
-                <label>Descrição</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  maxLength={2000}
-                  rows={4}
-                  style={{ width: '100%', resize: 'vertical' }}
-                />
-              </div>
-            </div>
+            <ServiceOrderFormFields form={form} setForm={setForm} />
           </form>
         </div>
 
@@ -176,23 +191,116 @@ export function ServiceOrderCommentsModal({ serviceOrderId, subject, onClose }: 
 }
 
 export function ServiceOrderDetailModal({ id, onClose }: { id: string; onClose: () => void }) {
+  const user = useAuthStore((s) => s.user);
+  const canManage = isSupervisorOrAbove(user?.role);
+  const canDelete = isManagerOrAbove(user?.role);
+
   const serviceOrder = useServiceOrder(id);
   const o = serviceOrder.data;
+  const updateServiceOrder = useUpdateServiceOrder();
+  const deleteServiceOrder = useDeleteServiceOrder();
+  const createServiceOrder = useCreateServiceOrder();
+
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<ServiceOrderFormState>(emptyServiceOrderForm());
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (o) {
+      setForm({
+        areaId: o.areaId,
+        assetId: o.assetId,
+        subject: o.subject,
+        description: o.description ?? '',
+        dueAtUtc: o.dueAtUtc.slice(0, 10)
+      });
+    }
+  }, [o]);
+
+  function startEditing() {
+    setError(null);
+    setEditing(true);
+  }
+
+  async function onSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!o) return;
+    setError(null);
+    if (!form.areaId) return setError('Selecione o setor.');
+    if (!form.assetId) return setError('Selecione o ativo.');
+    if (!form.dueAtUtc) return setError('Selecione a data de vencimento.');
+    try {
+      await updateServiceOrder.mutateAsync({
+        id: o.id,
+        input: {
+          areaId: form.areaId,
+          assetId: form.assetId,
+          subject: form.subject,
+          description: form.description || null,
+          priority: o.priority,
+          dueAtUtc: new Date(`${form.dueAtUtc}T23:59:59`).toISOString()
+        }
+      });
+      setEditing(false);
+    } catch (err) {
+      setError(toApiError(err).message);
+    }
+  }
+
+  async function onDuplicate() {
+    if (!o) return;
+    setError(null);
+    try {
+      await createServiceOrder.mutateAsync({
+        areaId: o.areaId,
+        assetId: o.assetId,
+        subject: `${o.subject} (cópia)`,
+        description: o.description ?? null,
+        priority: o.priority,
+        dueAtUtc: o.dueAtUtc
+      });
+      onClose();
+    } catch (err) {
+      setError(toApiError(err).message);
+    }
+  }
+
+  async function onDelete() {
+    if (!o) return;
+    if (!window.confirm(`Excluir a ordem de serviço "${o.subject}"? Esta ação não pode ser desfeita.`)) return;
+    setError(null);
+    try {
+      await deleteServiceOrder.mutateAsync(o.id);
+      onClose();
+    } catch (err) {
+      setError(toApiError(err).message);
+    }
+  }
+
+  const pending = updateServiceOrder.isPending || createServiceOrder.isPending || deleteServiceOrder.isPending;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{o ? o.subject : 'Ordem de serviço'}</h2>
+          <h2>{editing ? 'Editar ordem de serviço' : o ? o.subject : 'Ordem de serviço'}</h2>
           <p>{o ? `${o.assetName} · ${o.areaName}` : 'Detalhes da ordem de serviço'}</p>
           <button type="button" className="modal-close" onClick={onClose} title="Fechar">
             ✕
           </button>
         </div>
         <div className="modal-body">
+          <ErrorBanner message={error} />
           {serviceOrder.isLoading && <p className="muted">Carregando…</p>}
           {!serviceOrder.isLoading && !o && <p className="muted">Ordem de serviço não encontrada.</p>}
-          {o && (
+
+          {o && editing && (
+            <form id="edit-service-order-form" onSubmit={onSave}>
+              <ServiceOrderFormFields form={form} setForm={setForm} />
+            </form>
+          )}
+
+          {o && !editing && (
             <>
               <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
                 <span className={'status ' + priorityClass[o.priority]}>{priorityLabel[o.priority]}</span>
@@ -224,10 +332,42 @@ export function ServiceOrderDetailModal({ id, onClose }: { id: string; onClose: 
           )}
         </div>
         <div className="modal-footer">
-          <div className="form-actions" style={{ marginTop: 0 }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
-              Fechar
-            </button>
+          <div className="form-actions" style={{ marginTop: 0, justifyContent: 'space-between' }}>
+            {o && !editing && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                {canManage && (
+                  <button type="button" className="btn btn-secondary" onClick={startEditing}>
+                    Editar
+                  </button>
+                )}
+                {canManage && (
+                  <button type="button" className="btn btn-secondary" onClick={onDuplicate} disabled={pending}>
+                    Duplicar
+                  </button>
+                )}
+                {canDelete && (
+                  <button type="button" className="btn btn-secondary" onClick={onDelete} disabled={pending}>
+                    Excluir
+                  </button>
+                )}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+              {editing ? (
+                <>
+                  <button type="button" className="btn btn-secondary" onClick={() => setEditing(false)} disabled={pending}>
+                    Cancelar
+                  </button>
+                  <button type="submit" form="edit-service-order-form" className="btn btn-primary" disabled={pending}>
+                    {updateServiceOrder.isPending ? 'Salvando…' : 'Salvar'}
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="btn btn-secondary" onClick={onClose}>
+                  Fechar
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
