@@ -29,6 +29,7 @@ export function CreateCallForm({ onClose }: { onClose: () => void }) {
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<CallPriority>('Media');
+  const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
@@ -39,7 +40,7 @@ export function CreateCallForm({ onClose }: { onClose: () => void }) {
       return;
     }
     try {
-      await createCall.mutateAsync({ areaId, subject, description: description || null, priority });
+      await createCall.mutateAsync({ areaId, subject, description: description || null, priority, file });
       onClose();
     } catch (err) {
       setError(toApiError(err).message);
@@ -54,7 +55,7 @@ export function CreateCallForm({ onClose }: { onClose: () => void }) {
             <div style={{ minWidth: 0 }}>
               <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Abrir chamado</h2>
               <p className="muted" style={{ margin: '4px 0 0', fontSize: 12.5 }}>
-                Defina a área, a prioridade e o assunto
+                Defina a área, a prioridade, o assunto e, se quiser, uma foto
               </p>
             </div>
             <button type="button" className="modal-close" onClick={onClose} title="Fechar">
@@ -101,6 +102,18 @@ export function CreateCallForm({ onClose }: { onClose: () => void }) {
                   rows={4}
                   style={{ width: '100%', resize: 'vertical' }}
                 />
+              </div>
+              <div className="field">
+                <label>Foto (opcional)</label>
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+                {file && (
+                  <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                    {file.name}{' '}
+                    <button type="button" className="btn btn-secondary btn-sm" style={{ marginLeft: 6 }} onClick={() => setFile(null)}>
+                      Remover
+                    </button>
+                  </p>
+                )}
               </div>
             </div>
           </form>

@@ -3,12 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useAreas } from '@/features/areas/hooks';
 import { useAuthStore } from '@/features/auth/store';
 import { useTemplates, useTemplate, useCreateTemplate, useUpdateTemplate, useDeleteTemplate } from '@/features/templates/hooks';
+import { useInstances } from '@/features/checklist-instances/hooks';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { ScheduleEditor, emptySchedule } from '@/components/ui/schedule-editor';
-import { roleLabel } from '@/components/ui/status-badge';
+import { roleLabel, isOverdue } from '@/components/ui/status-badge';
 import { toApiError } from '@/lib/api-error';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime, todayIso, daysAgoIso } from '@/lib/format';
 import {
   ChecklistTaskInput,
   ChecklistTemplateDto,
@@ -17,6 +18,21 @@ import {
   ScheduleInput,
   TaskExecutionMode
 } from '@/types/api';
+
+function Icon({ path, size = 18 }: { path: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d={path} />
+    </svg>
+  );
+}
+
+const ICONS = {
+  pending: 'M12 8v4l3 3M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
+  inProgress: 'M21 12a9 9 0 1 1-9-9c2.52 0 4.85.99 6.57 2.64M21 3v6h-6',
+  overdue: 'M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01',
+  completed: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'
+};
 
 const FREQUENCY_LABEL: Record<ScheduleFrequencyType, string> = { Daily: 'Diária', Weekly: 'Semanal', Monthly: 'Mensal' };
 
@@ -543,6 +559,14 @@ export function DiretoriaChecklists() {
   const [creatingNew, setCreatingNew] = useState(false);
   const templates = useTemplates(areaId || undefined);
 
+  const today = todayIso();
+  const instancesQuery = useInstances({ fromDate: daysAgoIso(13), toDate: today });
+  const instances = instancesQuery.data ?? [];
+  const pendentesHoje = instances.filter((i) => i.status === 'Pending' && i.date === today).length;
+  const emAndamento = instances.filter((i) => i.status === 'InProgress').length;
+  const atrasados = instances.filter((i) => isOverdue(i.status, i.date)).length;
+  const concluidosHoje = instances.filter((i) => i.status === 'Completed' && i.date === today).length;
+
   const areaOptions = (areas.data ?? []).map((a) => ({ value: a.id, label: a.name }));
   const areaName = (id: string) => areas.data?.find((a) => a.id === id)?.name ?? '—';
 
@@ -559,6 +583,45 @@ export function DiretoriaChecklists() {
         <button type="button" className="btn btn-primary" onClick={() => setCreatingNew(true)}>
           + Criar checklist
         </button>
+      </div>
+
+      <div className="dc-kpi-grid">
+        <div className="dc-kpi-card" style={{ background: 'rgba(154,103,0,.07)' }}>
+          <span className="dc-kpi-icon" style={{ background: '#fff4d6', color: '#9a6700' }}>
+            <Icon path={ICONS.pending} />
+          </span>
+          <div>
+            <div className="dc-kpi-value">{pendentesHoje}</div>
+            <div className="dc-kpi-label">Pendentes Hoje</div>
+          </div>
+        </div>
+        <div className="dc-kpi-card" style={{ background: 'rgba(55,102,245,.07)' }}>
+          <span className="dc-kpi-icon" style={{ background: '#e9efff', color: '#3766f5' }}>
+            <Icon path={ICONS.inProgress} />
+          </span>
+          <div>
+            <div className="dc-kpi-value">{emAndamento}</div>
+            <div className="dc-kpi-label">Em Andamento</div>
+          </div>
+        </div>
+        <div className="dc-kpi-card" style={{ background: 'rgba(196,60,53,.07)' }}>
+          <span className="dc-kpi-icon" style={{ background: '#ffebe9', color: '#c43c35' }}>
+            <Icon path={ICONS.overdue} />
+          </span>
+          <div>
+            <div className="dc-kpi-value">{atrasados}</div>
+            <div className="dc-kpi-label">Atrasados</div>
+          </div>
+        </div>
+        <div className="dc-kpi-card" style={{ background: 'rgba(22,121,78,.07)' }}>
+          <span className="dc-kpi-icon" style={{ background: '#def7ec', color: '#16794e' }}>
+            <Icon path={ICONS.completed} />
+          </span>
+          <div>
+            <div className="dc-kpi-value">{concluidosHoje}</div>
+            <div className="dc-kpi-label">Concluídos Hoje</div>
+          </div>
+        </div>
       </div>
 
       <div className="dc-filters-row">

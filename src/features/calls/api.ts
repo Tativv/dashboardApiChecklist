@@ -13,6 +13,7 @@ export interface CreateCallInput {
   subject: string;
   description?: string | null;
   priority: CallPriority;
+  file?: File | null;
 }
 
 export async function listCalls(filters: CallFilters = {}): Promise<CallListItemDto[]> {
@@ -31,7 +32,13 @@ export async function getCall(id: string): Promise<CallDto> {
 }
 
 export async function createCall(input: CreateCallInput): Promise<CallDto> {
-  const { data } = await http.post<CallDto>('/calls/', input);
+  const formData = new FormData();
+  formData.append('areaId', input.areaId);
+  formData.append('subject', input.subject);
+  if (input.description) formData.append('description', input.description);
+  formData.append('priority', input.priority);
+  if (input.file) formData.append('file', input.file);
+  const { data } = await http.post<CallDto>('/calls/', formData);
   return data;
 }
 
