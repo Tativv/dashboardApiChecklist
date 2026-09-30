@@ -64,17 +64,6 @@ const ICONS = {
     'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'
 };
 
-type QuickFilter = 'all' | 'open' | 'in-progress' | 'critical' | 'converted-os' | 'finished';
-
-const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
-  { key: 'all', label: 'Todos' },
-  { key: 'open', label: 'Abertos' },
-  { key: 'in-progress', label: 'Em Andamento' },
-  { key: 'critical', label: 'Críticos' },
-  { key: 'converted-os', label: 'Convertidos em OS' },
-  { key: 'finished', label: 'Finalizados' }
-];
-
 function ConvertToServiceOrderModal({ call, onClose, onConverted }: { call: CallListItemDto; onClose: () => void; onConverted: () => void }) {
   const assetsQuery = useAssets({ areaId: call.areaId, active: true });
   const convert = useConvertCallToServiceOrder();
@@ -315,7 +304,6 @@ export function DiretoriaCalls() {
   const [status, setStatus] = useState<CallStatus | 'Todos'>('Todos');
   const [priority, setPriority] = useState<CallPriority | 'Todas'>('Todas');
   const [search, setSearch] = useState('');
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const calls = useCalls({ areaId: areaId || undefined, status, priority });
   const serviceOrdersQuery = useServiceOrders({});
   const [creating, setCreating] = useState(false);
@@ -340,37 +328,9 @@ export function DiretoriaCalls() {
   const emAndamento = list.filter((c) => c.status === 'InProgress').length;
   const convertidos = list.filter((c) => links.has(c.id)).length;
   const finalizados = list.filter((c) => c.status === 'Finished').length;
-  const criticos = list.filter((c) => c.priority === 'Alta' && c.status !== 'Finished').length;
-
-  function matchesQuickFilter(c: CallListItemDto, filter: QuickFilter): boolean {
-    switch (filter) {
-      case 'open':
-        return c.status === 'Open';
-      case 'in-progress':
-        return c.status === 'InProgress';
-      case 'finished':
-        return c.status === 'Finished';
-      case 'critical':
-        return c.priority === 'Alta' && c.status !== 'Finished';
-      case 'converted-os':
-        return links.has(c.id);
-      default:
-        return true;
-    }
-  }
-
-  const quickFilterCounts: Record<QuickFilter, number> = {
-    all: list.length,
-    open: abertos,
-    'in-progress': emAndamento,
-    critical: criticos,
-    'converted-os': convertidos,
-    finished: finalizados
-  };
 
   const searchTerm = search.trim().toLowerCase();
   const filtered = list.filter((c) => {
-    if (!matchesQuickFilter(c, quickFilter)) return false;
     if (!searchTerm) return true;
     return (
       c.subject.toLowerCase().includes(searchTerm) ||
@@ -396,7 +356,7 @@ export function DiretoriaCalls() {
       {creating && <CreateCallForm onClose={() => setCreating(false)} />}
 
       <div className="dc-kpi-grid">
-        <div className="dc-kpi-card" style={{ background: 'rgba(100,116,139,.07)', borderLeft: `4px solid ${STATUS_BAR_COLOR.Open}` }}>
+        <div className="dc-kpi-card" style={{ background: 'rgba(100,116,139,.07)' }}>
           <span className="dc-kpi-icon" style={{ background: '#eef1f6', color: '#475467' }}>
             <Icon path={ICONS.open} />
           </span>
@@ -405,7 +365,7 @@ export function DiretoriaCalls() {
             <div className="dc-kpi-label">Abertos</div>
           </div>
         </div>
-        <div className="dc-kpi-card" style={{ background: 'rgba(49,91,214,.07)', borderLeft: `4px solid ${STATUS_BAR_COLOR.InProgress}` }}>
+        <div className="dc-kpi-card" style={{ background: 'rgba(49,91,214,.07)' }}>
           <span className="dc-kpi-icon" style={{ background: '#e9efff', color: '#3766f5' }}>
             <Icon path={ICONS.inProgress} />
           </span>
@@ -414,7 +374,7 @@ export function DiretoriaCalls() {
             <div className="dc-kpi-label">Em Andamento</div>
           </div>
         </div>
-        <div className="dc-kpi-card" style={{ background: 'rgba(124,58,237,.07)', borderLeft: `4px solid ${CONVERTED_BAR_COLOR}` }}>
+        <div className="dc-kpi-card" style={{ background: 'rgba(124,58,237,.07)' }}>
           <span className="dc-kpi-icon" style={{ background: '#f0ecff', color: '#7c3aed' }}>
             <Icon path={ICONS.wrench} />
           </span>
@@ -423,7 +383,7 @@ export function DiretoriaCalls() {
             <div className="dc-kpi-label">Convertidos em OS</div>
           </div>
         </div>
-        <div className="dc-kpi-card" style={{ background: 'rgba(22,121,78,.07)', borderLeft: `4px solid ${STATUS_BAR_COLOR.Finished}` }}>
+        <div className="dc-kpi-card" style={{ background: 'rgba(22,121,78,.07)' }}>
           <span className="dc-kpi-icon" style={{ background: '#def7ec', color: '#16794e' }}>
             <Icon path={ICONS.finished} />
           </span>
@@ -473,20 +433,6 @@ export function DiretoriaCalls() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-      </div>
-
-      <div className="dc-quick-filters">
-        {QUICK_FILTERS.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            className={'dc-quick-filter' + (quickFilter === f.key ? ' selected' : '')}
-            onClick={() => setQuickFilter(f.key)}
-          >
-            <span>{f.label}</span>
-            <span className="dc-quick-filter-count">{quickFilterCounts[f.key]}</span>
-          </button>
-        ))}
       </div>
 
       <div className="card-list">
