@@ -86,6 +86,11 @@ function shiftDateIso(iso: string, days: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function toLocalDateIso(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function activityIconAndColor(type: ActivityEvent['type']): { path: string; color: string } {
   switch (type) {
     case 'checklist_finished':
@@ -768,7 +773,14 @@ export function ControlCenter() {
     [data.openCalls]
   );
   const visibleAreas = data.areaMetrics.slice(0, 6);
-  const visibleServiceOrders = data.overdueServiceOrders.slice(0, 5);
+  const serviceOrdersToday = useMemo(
+    () =>
+      [...data.serviceOrders]
+        .filter((o) => toLocalDateIso(o.dueAtUtc) === date)
+        .sort((a, b) => new Date(a.dueAtUtc).getTime() - new Date(b.dueAtUtc).getTime()),
+    [data.serviceOrders, date]
+  );
+  const visibleServiceOrders = serviceOrdersToday.slice(0, 5);
   const visibleCalls = sortedCalls.slice(0, 5);
   const visibleActivity = data.activity.slice(0, 5);
 
@@ -1037,7 +1049,7 @@ export function ControlCenter() {
                 {visibleServiceOrders.length === 0 && (
                   <tr>
                     <td colSpan={3} className="muted">
-                      Nenhuma ordem de serviço atrasada.
+                      Nenhuma ordem de serviço para {dayLabel}.
                     </td>
                   </tr>
                 )}
