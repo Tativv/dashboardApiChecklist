@@ -8,18 +8,13 @@ import { useUsers } from '@/features/users/hooks';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toApiError } from '@/lib/api-error';
-import { formatDateTime, todayIso } from '@/lib/format';
+import { formatDateTime } from '@/lib/format';
 import { CallListItemDto, CallPriority, CallStatus, ServiceOrderListItemDto } from '@/types/api';
 import { priorityLabel, priorityClass, statusLabel, statusClass, CreateCallForm, CallCommentsModal, CallDetailModal } from './shared';
 import { ServiceOrderDetailModal } from '../service-orders/shared';
 
 const STATUS_BAR_COLOR: Record<CallStatus, string> = { Open: '#64748b', InProgress: '#315bd6', Finished: '#16794e' };
 const CONVERTED_BAR_COLOR = '#7c3aed';
-
-function toLocalDateIso(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 function elapsedShort(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -343,10 +338,8 @@ export function DiretoriaCalls() {
 
   const abertos = list.filter((c) => c.status === 'Open').length;
   const emAndamento = list.filter((c) => c.status === 'InProgress').length;
-  const today = todayIso();
-  const finalizadosHoje = list.filter(
-    (c) => c.status === 'Finished' && !!c.completedAt && toLocalDateIso(c.completedAt) === today
-  ).length;
+  const convertidos = list.filter((c) => links.has(c.id)).length;
+  const finalizados = list.filter((c) => c.status === 'Finished').length;
   const criticos = list.filter((c) => c.priority === 'Alta' && c.status !== 'Finished').length;
 
   function matchesQuickFilter(c: CallListItemDto, filter: QuickFilter): boolean {
@@ -371,8 +364,8 @@ export function DiretoriaCalls() {
     open: abertos,
     'in-progress': emAndamento,
     critical: criticos,
-    'converted-os': list.filter((c) => links.has(c.id)).length,
-    finished: list.filter((c) => c.status === 'Finished').length
+    'converted-os': convertidos,
+    finished: finalizados
   };
 
   const searchTerm = search.trim().toLowerCase();
@@ -403,8 +396,8 @@ export function DiretoriaCalls() {
       {creating && <CreateCallForm onClose={() => setCreating(false)} />}
 
       <div className="dc-kpi-grid">
-        <div className="dc-kpi-card" style={{ background: 'rgba(154,103,0,.07)' }}>
-          <span className="dc-kpi-icon" style={{ background: '#fff4d6', color: '#9a6700' }}>
+        <div className="dc-kpi-card" style={{ background: 'rgba(100,116,139,.07)', borderLeft: `4px solid ${STATUS_BAR_COLOR.Open}` }}>
+          <span className="dc-kpi-icon" style={{ background: '#eef1f6', color: '#475467' }}>
             <Icon path={ICONS.open} />
           </span>
           <div>
@@ -412,7 +405,7 @@ export function DiretoriaCalls() {
             <div className="dc-kpi-label">Abertos</div>
           </div>
         </div>
-        <div className="dc-kpi-card" style={{ background: 'rgba(55,102,245,.07)' }}>
+        <div className="dc-kpi-card" style={{ background: 'rgba(49,91,214,.07)', borderLeft: `4px solid ${STATUS_BAR_COLOR.InProgress}` }}>
           <span className="dc-kpi-icon" style={{ background: '#e9efff', color: '#3766f5' }}>
             <Icon path={ICONS.inProgress} />
           </span>
@@ -421,22 +414,22 @@ export function DiretoriaCalls() {
             <div className="dc-kpi-label">Em Andamento</div>
           </div>
         </div>
-        <div className="dc-kpi-card" style={{ background: 'rgba(22,121,78,.07)' }}>
+        <div className="dc-kpi-card" style={{ background: 'rgba(124,58,237,.07)', borderLeft: `4px solid ${CONVERTED_BAR_COLOR}` }}>
+          <span className="dc-kpi-icon" style={{ background: '#f0ecff', color: '#7c3aed' }}>
+            <Icon path={ICONS.wrench} />
+          </span>
+          <div>
+            <div className="dc-kpi-value">{convertidos}</div>
+            <div className="dc-kpi-label">Convertidos em OS</div>
+          </div>
+        </div>
+        <div className="dc-kpi-card" style={{ background: 'rgba(22,121,78,.07)', borderLeft: `4px solid ${STATUS_BAR_COLOR.Finished}` }}>
           <span className="dc-kpi-icon" style={{ background: '#def7ec', color: '#16794e' }}>
             <Icon path={ICONS.finished} />
           </span>
           <div>
-            <div className="dc-kpi-value">{finalizadosHoje}</div>
-            <div className="dc-kpi-label">Finalizados Hoje</div>
-          </div>
-        </div>
-        <div className="dc-kpi-card" style={{ background: 'rgba(196,60,53,.07)' }}>
-          <span className="dc-kpi-icon" style={{ background: '#ffebe9', color: '#c43c35' }}>
-            <Icon path={ICONS.critical} />
-          </span>
-          <div>
-            <div className="dc-kpi-value">{criticos}</div>
-            <div className="dc-kpi-label">Críticos</div>
+            <div className="dc-kpi-value">{finalizados}</div>
+            <div className="dc-kpi-label">Finalizados</div>
           </div>
         </div>
       </div>
