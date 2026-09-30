@@ -86,10 +86,6 @@ function shiftDateIso(iso: string, days: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function daysOverdue(dueAtUtc: string): number {
-  return Math.max(1, Math.floor((Date.now() - new Date(dueAtUtc).getTime()) / 86400000));
-}
-
 function activityIconAndColor(type: ActivityEvent['type']): { path: string; color: string } {
   switch (type) {
     case 'checklist_finished':
@@ -1025,8 +1021,6 @@ export function ControlCenter() {
                 <tr>
                   <th>Assunto</th>
                   <th>Ativo</th>
-                  <th>Prioridade</th>
-                  <th>Dias em atraso</th>
                   <th>Responsável</th>
                 </tr>
               </thead>
@@ -1037,18 +1031,12 @@ export function ControlCenter() {
                       <b>{o.subject}</b>
                     </td>
                     <td className="muted">{o.assetName}</td>
-                    <td>
-                      <span className={'status ' + SO_PRIORITY_CLASS[o.priority]}>{SO_PRIORITY_LABEL[o.priority]}</span>
-                    </td>
-                    <td>
-                      <span className="status overdue">{daysOverdue(o.dueAtUtc)}d</span>
-                    </td>
                     <td className="muted">{o.assignedUserName ?? 'Não designado'}</td>
                   </tr>
                 ))}
                 {visibleServiceOrders.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="muted">
+                    <td colSpan={3} className="muted">
                       Nenhuma ordem de serviço atrasada.
                     </td>
                   </tr>

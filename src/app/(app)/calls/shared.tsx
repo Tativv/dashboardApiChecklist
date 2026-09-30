@@ -47,56 +47,76 @@ export function CreateCallForm({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="panel" style={{ marginBottom: 20, maxWidth: 620 }}>
-      <h2 className="card-title">Abrir chamado</h2>
-      <ErrorBanner message={error} />
-      <form onSubmit={onSubmit}>
-        <div className="form-grid">
-          <div className="field">
-            <label>Área destino</label>
-            <SearchableSelect
-              value={areaId}
-              onChange={setAreaId}
-              placeholder="Selecione a área"
-              options={(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
-            />
-          </div>
-          <div className="field">
-            <label>Prioridade</label>
-            <SearchableSelect
-              value={priority}
-              onChange={(v) => setPriority(v as CallPriority)}
-              options={[
-                { value: 'Baixa', label: 'Baixa' },
-                { value: 'Media', label: 'Média' },
-                { value: 'Alta', label: 'Alta' }
-              ]}
-            />
-          </div>
-          <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <label>Assunto</label>
-            <input value={subject} onChange={(e) => setSubject(e.target.value)} required maxLength={200} />
-          </div>
-          <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <label>Descrição</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={2000}
-              rows={4}
-              style={{ width: '100%', resize: 'vertical' }}
-            />
+    <div className="side-panel-overlay" onClick={onClose}>
+      <div className="side-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="side-panel-header">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Abrir chamado</h2>
+              <p className="muted" style={{ margin: '4px 0 0', fontSize: 12.5 }}>
+                Defina a área, a prioridade e o assunto
+              </p>
+            </div>
+            <button type="button" className="modal-close" onClick={onClose} title="Fechar">
+              ✕
+            </button>
           </div>
         </div>
-        <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
-            Cancelar
-          </button>
-          <button className="btn btn-primary" disabled={createCall.isPending}>
-            {createCall.isPending ? 'Abrindo…' : 'Abrir chamado'}
-          </button>
+
+        <div className="side-panel-body">
+          <ErrorBanner message={error} />
+          <form id="create-call-form" onSubmit={onSubmit}>
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div className="field">
+                <label>Área destino</label>
+                <SearchableSelect
+                  value={areaId}
+                  onChange={setAreaId}
+                  placeholder="Selecione a área"
+                  options={(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+                />
+              </div>
+              <div className="field">
+                <label>Prioridade</label>
+                <SearchableSelect
+                  value={priority}
+                  onChange={(v) => setPriority(v as CallPriority)}
+                  options={[
+                    { value: 'Baixa', label: 'Baixa' },
+                    { value: 'Media', label: 'Média' },
+                    { value: 'Alta', label: 'Alta' }
+                  ]}
+                />
+              </div>
+              <div className="field">
+                <label>Assunto</label>
+                <input value={subject} onChange={(e) => setSubject(e.target.value)} required maxLength={200} />
+              </div>
+              <div className="field">
+                <label>Descrição</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  maxLength={2000}
+                  rows={4}
+                  style={{ width: '100%', resize: 'vertical' }}
+                />
+              </div>
+            </div>
+          </form>
         </div>
-      </form>
+
+        <div className="side-panel-footer">
+          <div className="form-actions" style={{ marginTop: 0 }}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              Cancelar
+            </button>
+            <button type="submit" form="create-call-form" className="btn btn-primary" disabled={createCall.isPending}>
+              {createCall.isPending ? 'Abrindo…' : 'Abrir chamado'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
