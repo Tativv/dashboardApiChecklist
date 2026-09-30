@@ -15,7 +15,7 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toApiError } from '@/lib/api-error';
 import { formatDateTime } from '@/lib/format';
-import { ServiceOrderListItemDto, ServiceOrderPriority, ServiceOrderStatus } from '@/types/api';
+import { ServiceOrderListItemDto } from '@/types/api';
 import {
   priorityLabel,
   priorityClass,
@@ -177,11 +177,9 @@ export default function ServiceOrdersPage() {
   const areas = useAreas();
   const assignableUsersQuery = useUsers({ active: true }, canManage);
   const [areaId, setAreaId] = useState('');
-  const [status, setStatus] = useState<ServiceOrderStatus | 'Todos'>('Todos');
-  const [priority, setPriority] = useState<ServiceOrderPriority | 'Todas'>('Todas');
   const [search, setSearch] = useState('');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
-  const serviceOrders = useServiceOrders({ areaId: areaId || undefined, status, priority });
+  const serviceOrders = useServiceOrders({ areaId: areaId || undefined });
   const [creating, setCreating] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [commentsOrder, setCommentsOrder] = useState<ServiceOrderListItemDto | null>(null);
@@ -295,31 +293,9 @@ export default function ServiceOrdersPage() {
             <SearchableSelect
               value={areaId}
               onChange={setAreaId}
-              placeholder="Todas as áreas"
+              placeholder="Todos os setores"
               className="btn btn-secondary"
-              options={[{ value: '', label: 'Todas as áreas' }, ...areaOptions.map((a) => ({ value: a.id, label: a.name }))]}
-            />
-            <SearchableSelect
-              value={status}
-              onChange={(v) => setStatus(v as ServiceOrderStatus | 'Todos')}
-              className="btn btn-secondary"
-              options={[
-                { value: 'Todos', label: 'Todos os status' },
-                { value: 'Open', label: 'Aberta' },
-                { value: 'InProgress', label: 'Em andamento' },
-                { value: 'Finished', label: 'Concluída' }
-              ]}
-            />
-            <SearchableSelect
-              value={priority}
-              onChange={(v) => setPriority(v as ServiceOrderPriority | 'Todas')}
-              className="btn btn-secondary"
-              options={[
-                { value: 'Todas', label: 'Todas as prioridades' },
-                { value: 'Alta', label: 'Alta' },
-                { value: 'Media', label: 'Média' },
-                { value: 'Baixa', label: 'Baixa' }
-              ]}
+              options={[{ value: '', label: 'Todos os setores' }, ...areaOptions.map((a) => ({ value: a.id, label: a.name }))]}
             />
           </div>
           <input

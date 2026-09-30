@@ -36,10 +36,11 @@ const DEFAULT_PRIORITY: ServiceOrderPriority = 'Media';
 
 export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
   const areas = useAreas();
+  const areaNameById = new Map((areas.data ?? []).map((a) => [a.id, a.name]));
   const createServiceOrder = useCreateServiceOrder();
-  const [areaId, setAreaId] = useState('');
   const [assetId, setAssetId] = useState('');
-  const assetsQuery = useAssets({ areaId: areaId || undefined, active: true });
+  const assetsQuery = useAssets({ active: true });
+  const selectedAsset = (assetsQuery.data ?? []).find((a) => a.id === assetId);
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [dueAtUtc, setDueAtUtc] = useState('');
@@ -48,13 +49,12 @@ export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!areaId) return setError('Selecione a área.');
-    if (!assetId) return setError('Selecione o ativo.');
+    if (!selectedAsset) return setError('Selecione o ativo.');
     if (!dueAtUtc) return setError('Selecione a data de vencimento.');
     try {
       await createServiceOrder.mutateAsync({
-        areaId,
-        assetId,
+        areaId: selectedAsset.areaId,
+        assetId: selectedAsset.id,
         subject,
         description: description || null,
         priority: DEFAULT_PRIORITY,
@@ -88,25 +88,19 @@ export function CreateServiceOrderForm({ onClose }: { onClose: () => void }) {
           <form id="create-service-order-form" onSubmit={onSubmit}>
             <div style={{ display: 'grid', gap: 14 }}>
               <div className="field">
-                <label>Área</label>
-                <SearchableSelect
-                  value={areaId}
-                  onChange={(v) => {
-                    setAreaId(v);
-                    setAssetId('');
-                  }}
-                  placeholder="Selecione a área"
-                  options={(areas.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
-                />
-              </div>
-              <div className="field">
                 <label>Ativo</label>
                 <SearchableSelect
                   value={assetId}
                   onChange={setAssetId}
-                  placeholder={areaId ? 'Selecione o ativo' : 'Selecione a área primeiro'}
+                  placeholder="Selecione o ativo"
                   options={(assetsQuery.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
                 />
+              </div>
+              <div className="field">
+                <label>Setor</label>
+                <div style={{ fontSize: 13.5, padding: '10px 0', color: selectedAsset ? 'var(--ink)' : 'var(--muted)' }}>
+                  {selectedAsset ? (areaNameById.get(selectedAsset.areaId) ?? '—') : 'Selecione o ativo para ver o setor'}
+                </div>
               </div>
               <div className="field">
                 <label>Vencimento</label>
@@ -201,7 +195,7 @@ export function ServiceOrderDetailModal({ id, onClose }: { id: string; onClose: 
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <DetailField label="Área" value={o.areaName} />
+                <DetailField label="Setor" value={o.areaName} />
                 <DetailField label="Ativo" value={o.assetName} />
                 <DetailField label="Designado a" value={o.assignedUserName ?? 'Não designado'} />
                 <DetailField label="Criado por" value={o.createdByUserName} />
